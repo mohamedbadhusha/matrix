@@ -944,13 +944,6 @@ export default function Orders() {
                   </tbody>
                 </table>
               </div>
-                          {trade.exchangeTime ? trade.exchangeTime.split(' ')[1] ?? trade.exchangeTime : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
               <div className="border-t border-border px-4 py-2.5 flex items-center justify-between">
                 <p className="text-xs text-muted">{trades.length} trade{trades.length !== 1 ? 's' : ''} today</p>
                 <p className={cn('text-xs font-mono font-semibold', tradePnl >= 0 ? 'text-profit' : 'text-loss')}>
