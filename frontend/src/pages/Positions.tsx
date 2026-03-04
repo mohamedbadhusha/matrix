@@ -76,7 +76,7 @@ export default function Positions() {
     if (!profile) return;
     supabase
       .from('broker_accounts')
-      .select('id, broker_name, client_id, is_active, health_status')
+      .select('id, broker, client_id, is_active, health_status')
       .eq('user_id', profile.id)
       .eq('is_active', true)
       .then(({ data }) => {
@@ -171,7 +171,7 @@ export default function Positions() {
               {brokers.length === 0 && <option value="">No brokers</option>}
               {brokers.map(b => (
                 <option key={b.id} value={b.id}>
-                  {b.broker_name} · {b.client_id}
+                  {b.broker} · {b.client_id}
                 </option>
               ))}
             </select>

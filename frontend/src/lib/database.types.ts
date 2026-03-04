@@ -38,6 +38,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Relationships: never[];
       };
       broker_accounts: {
         Row: {
@@ -72,6 +73,7 @@ export interface Database {
           health_status?: string;
         };
         Update: Partial<Database['public']['Tables']['broker_accounts']['Insert']>;
+        Relationships: never[];
       };
       trade_nodes: {
         Row: {
@@ -150,6 +152,7 @@ export interface Database {
           ltp_source?: string;
         };
         Update: Partial<Database['public']['Tables']['trade_nodes']['Insert']>;
+        Relationships: never[];
       };
       copy_subscriptions: {
         Row: {
@@ -168,6 +171,7 @@ export interface Database {
           lot_multiplier?: number;
         };
         Update: Partial<Database['public']['Tables']['copy_subscriptions']['Insert']>;
+        Relationships: never[];
       };
       order_logs: {
         Row: {
@@ -198,6 +202,7 @@ export interface Database {
           raw_response?: Json | null;
         };
         Update: Partial<Database['public']['Tables']['order_logs']['Insert']>;
+        Relationships: never[];
       };
       trade_events: {
         Row: {
@@ -220,6 +225,7 @@ export interface Database {
           payload?: Json | null;
         };
         Update: Partial<Database['public']['Tables']['trade_events']['Insert']>;
+        Relationships: never[];
       };
       subscriptions: {
         Row: {
@@ -246,6 +252,7 @@ export interface Database {
           amount?: number | null;
         };
         Update: Partial<Database['public']['Tables']['subscriptions']['Insert']>;
+        Relationships: never[];
       };
       system_flags: {
         Row: {
@@ -260,6 +267,7 @@ export interface Database {
           updated_by?: string | null;
         };
         Update: Partial<Database['public']['Tables']['system_flags']['Insert']>;
+        Relationships: never[];
       };
       broker_health: {
         Row: {
@@ -277,6 +285,7 @@ export interface Database {
           last_error?: string | null;
         };
         Update: Partial<Database['public']['Tables']['broker_health']['Insert']>;
+        Relationships: never[];
       };
     };
     Views: Record<string, never>;

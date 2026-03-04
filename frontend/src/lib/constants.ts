@@ -34,7 +34,8 @@ export const DAILY_TRADE_LIMITS: Record<UserTier, number> = {
 };
 
 // ── Subscription prices (INR) ────────────────────────────────────────────
-export const SUBSCRIPTION_PRICES = {
+export const SUBSCRIPTION_PRICES: Record<UserTier, { monthly: number; annual: number }> = {
+  free:  { monthly: 0,    annual: 0     },
   pro:   { monthly: 999,  annual: 9990  },
   elite: { monthly: 2499, annual: 24990 },
 };

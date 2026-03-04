@@ -151,12 +151,12 @@ export default function Subscription() {
 
               {/* Price */}
               <div>
-                {price === 0 ? (
+                {price.monthly === 0 ? (
                   <p className="text-3xl font-bold text-foreground">Free</p>
                 ) : (
                   <div>
                     <p className="text-3xl font-bold text-foreground">
-                      ₹{price.toLocaleString('en-IN')}
+                      ₹{price.monthly.toLocaleString('en-IN')}
                     </p>
                     <p className="text-xs text-muted">/month</p>
                   </div>

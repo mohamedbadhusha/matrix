@@ -145,7 +145,7 @@ export default function OptionChain() {
     if (!profile) return;
     supabase
       .from('broker_accounts')
-      .select('id, broker_name, client_id, is_active')
+      .select('id, broker, client_id, is_active')
       .eq('user_id', profile.id)
       .eq('is_active', true)
       .then(({ data }) => {
@@ -257,7 +257,7 @@ export default function OptionChain() {
         <div className="relative">
           <select value={selectedBroker} onChange={e => setSelectedBroker(e.target.value)} className="input-base pr-8 text-sm min-w-[160px]">
             {brokers.length === 0 && <option value="">No brokers</option>}
-            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker_name} · {b.client_id}</option>)}
+            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker} · {b.client_id}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         </div>

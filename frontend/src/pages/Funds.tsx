@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import type { BrokerAccount, DhanFundLimit, MarginCalculatorPayload, DhanMarginResult, MultiMarginScript, MultiMarginCalculatorPayload, DhanMultiMarginResult } from '@/types';
+import type { BrokerAccount, DhanFundLimit, DhanProductType, MarginCalculatorPayload, DhanMarginResult, MultiMarginScript, MultiMarginCalculatorPayload, DhanMultiMarginResult } from '@/types';
 import { ChevronDown, RefreshCw, Wallet, Plus, X, Calculator } from 'lucide-react';
 
 const fmtINR = (v: number | undefined) =>
@@ -22,7 +22,7 @@ export default function Funds() {
     if (!profile) return;
     supabase
       .from('broker_accounts')
-      .select('id, broker_name, client_id, is_active, health_status')
+      .select('id, broker, client_id, is_active, health_status')
       .eq('user_id', profile.id)
       .eq('is_active', true)
       .then(({ data }) => {
@@ -43,7 +43,7 @@ export default function Funds() {
         <div className="relative">
           <select value={selectedBroker} onChange={e => setSelectedBroker(e.target.value)} className="input-base pr-8 text-sm min-w-[160px]">
             {brokers.length === 0 && <option value="">No brokers</option>}
-            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker_name} · {b.client_id}</option>)}
+            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker} · {b.client_id}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         </div>
@@ -188,14 +188,14 @@ function SingleMarginCard({ brokerId }: { brokerId: string }) {
       {result && (
         <div className="border-t border-border pt-4 grid grid-cols-2 gap-2">
           {([
-            { label: 'Total Margin',    key: 'totalMargin' as const,    cls: 'text-accent-cyan' },
-            { label: 'SPAN Margin',     key: 'spanMargin' as const },
-            { label: 'Exposure Margin', key: 'exposureMargin' as const },
-            { label: 'Available Bal',   key: 'availableBalance' as const, cls: 'text-profit' },
-            { label: 'Variable Margin', key: 'variableMargin' as const },
-            { label: 'Insufficient',    key: 'insufficientBalance' as const, cls: result.insufficientBalance ? 'text-loss' : '' },
-            { label: 'Brokerage',       key: 'brokerage' as const },
-            { label: 'Leverage',        key: 'leverage' as const },
+            { label: 'Total Margin',    key: 'totalMargin' as const,    cls: 'text-accent-cyan' as string | undefined },
+            { label: 'SPAN Margin',     key: 'spanMargin' as const,     cls: undefined as string | undefined },
+            { label: 'Exposure Margin', key: 'exposureMargin' as const, cls: undefined as string | undefined },
+            { label: 'Available Bal',   key: 'availableBalance' as const, cls: 'text-profit' as string | undefined },
+            { label: 'Variable Margin', key: 'variableMargin' as const, cls: undefined as string | undefined },
+            { label: 'Insufficient',    key: 'insufficientBalance' as const, cls: result.insufficientBalance ? 'text-loss' : '' as string | undefined },
+            { label: 'Brokerage',       key: 'brokerage' as const,      cls: undefined as string | undefined },
+            { label: 'Leverage',        key: 'leverage' as const,        cls: undefined as string | undefined },
           ] as const).map(({ label, key, cls }) => (
             <div key={key} className="bg-border/10 rounded-lg px-2.5 py-2">
               <p className="text-[10px] text-muted">{label}</p>
@@ -271,7 +271,7 @@ function MultiMarginCard({ brokerId }: { brokerId: string }) {
             </div>
             <div>
               <label className="block text-[10px] text-muted mb-1">Product</label>
-              <select className="input-base text-xs" value={s.productType} onChange={e => updateScript(idx, 'productType', e.target.value)}>
+              <select className="input-base text-xs" value={s.productType} onChange={e => updateScript(idx, 'productType', e.target.value as DhanProductType)}>
                 {['CNC','INTRADAY','MARGIN','MTF'].map(p => <option key={p}>{p}</option>)}
               </select>
             </div>
@@ -309,14 +309,14 @@ function MultiMarginCard({ brokerId }: { brokerId: string }) {
       {result && (
         <div className="border-t border-border pt-4 grid grid-cols-2 gap-2">
           {([
-            { label: 'Total Margin',     key: 'total_margin' as const,     cls: 'text-accent-cyan' },
-            { label: 'SPAN Margin',      key: 'span_margin' as const },
-            { label: 'Exposure Margin',  key: 'exposure_margin' as const },
-            { label: 'Equity Margin',    key: 'equity_margin' as const },
-            { label: 'F&O Margin',       key: 'fo_margin' as const },
-            { label: 'Commodity Margin', key: 'commodity_margin' as const },
-            { label: 'Currency Margin',  key: 'currency' as const },
-            { label: 'Hedge Benefit',    key: 'hedge_benefit' as const,    cls: 'text-profit' },
+            { label: 'Total Margin',     key: 'total_margin' as const,     cls: 'text-accent-cyan' as string | undefined },
+            { label: 'SPAN Margin',      key: 'span_margin' as const,      cls: undefined as string | undefined },
+            { label: 'Exposure Margin',  key: 'exposure_margin' as const,  cls: undefined as string | undefined },
+            { label: 'Equity Margin',    key: 'equity_margin' as const,    cls: undefined as string | undefined },
+            { label: 'F&O Margin',       key: 'fo_margin' as const,        cls: undefined as string | undefined },
+            { label: 'Commodity Margin', key: 'commodity_margin' as const, cls: undefined as string | undefined },
+            { label: 'Currency Margin',  key: 'currency' as const,         cls: undefined as string | undefined },
+            { label: 'Hedge Benefit',    key: 'hedge_benefit' as const,    cls: 'text-profit' as string | undefined },
           ] as const).map(({ label, key, cls }) => (
             <div key={key} className="bg-border/10 rounded-lg px-2.5 py-2">
               <p className="text-[10px] text-muted">{label}</p>

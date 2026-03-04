@@ -182,8 +182,10 @@ export interface Subscription {
 
 // ── System Flags ──────────────────────────────────────────────────────────
 export interface SystemFlag {
-  key: string;
-  value: boolean | number | string;
+  flag_key: string;
+  flag_value: boolean;
+  updated_by: string | null;
+  updated_at: string;
 }
 
 // ── Broker Health ─────────────────────────────────────────────────────────
@@ -656,8 +658,8 @@ export type DhanPnlExitStatus = 'ACTIVE' | 'INACTIVE' | 'DISABLED';
 export type DhanPnlProductType = 'INTRADAY' | 'DELIVERY';
 
 export interface DhanPnlExitConfig {
-  profitValue: string;
-  lossValue: string;
+  profitValue: number;
+  lossValue: number;
   productType: DhanPnlProductType[];
   enableKillSwitch: boolean;
 }

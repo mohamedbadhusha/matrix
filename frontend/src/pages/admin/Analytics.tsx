@@ -98,7 +98,7 @@ export default function Analytics() {
             <YAxis tick={{ fontSize: 10, fill: '#4A6A99' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`} />
             <Tooltip
               contentStyle={{ background: '#0F3460', border: '1px solid #2A3A5C', borderRadius: 8, fontSize: 12 }}
-              formatter={(val: number) => [formatCurrency(val, true), 'P&L']}
+              formatter={(val: number | undefined) => [formatCurrency(val ?? 0, true), 'P&L']}
             />
             <Bar dataKey="pnl" radius={[4, 4, 0, 0]}
               fill="#00D4FF"
@@ -122,7 +122,7 @@ export default function Analytics() {
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#4A6A99' }} axisLine={false} tickLine={false} width={70} />
               <Tooltip
                 contentStyle={{ background: '#0F3460', border: '1px solid #2A3A5C', borderRadius: 8, fontSize: 12 }}
-                formatter={(val: number) => [formatCurrency(val, true), 'P&L']}
+                formatter={(val: number | undefined) => [formatCurrency(val ?? 0, true), 'P&L']}
               />
               <Bar dataKey="pnl" radius={[0, 4, 4, 0]}>
                 {byProtocol.map((d, i) => (
@@ -145,7 +145,7 @@ export default function Analytics() {
                 outerRadius={70}
                 dataKey="value"
                 paddingAngle={3}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                 labelLine={false}
                 fontSize={10}
               >
