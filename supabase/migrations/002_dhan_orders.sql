@@ -109,6 +109,12 @@ CREATE INDEX IF NOT EXISTS dhan_trades_broker_idx      ON public.dhan_trades(bro
 ALTER TABLE public.dhan_orders  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dhan_trades  ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own dhan orders"   ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can insert own dhan orders"  ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can update own dhan orders"  ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can delete own dhan orders"  ON public.dhan_orders;
+DROP POLICY IF EXISTS "Admins can read all dhan orders"   ON public.dhan_orders;
+
 CREATE POLICY "Users can read own dhan orders"
   ON public.dhan_orders FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own dhan orders"
@@ -120,6 +126,10 @@ CREATE POLICY "Users can delete own dhan orders"
 CREATE POLICY "Admins can read all dhan orders"
   ON public.dhan_orders FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('admin','super_admin')));
+
+DROP POLICY IF EXISTS "Users can read own dhan trades"   ON public.dhan_trades;
+DROP POLICY IF EXISTS "Users can insert own dhan trades" ON public.dhan_trades;
+DROP POLICY IF EXISTS "Admins can read all dhan trades"  ON public.dhan_trades;
 
 CREATE POLICY "Users can read own dhan trades"
   ON public.dhan_trades FOR SELECT USING (auth.uid() = user_id);
