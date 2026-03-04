@@ -155,6 +155,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trade_nodes_touch ON public.trade_nodes;
 CREATE TRIGGER trade_nodes_touch
   BEFORE UPDATE ON public.trade_nodes
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
@@ -247,6 +248,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_orders (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS dhan_orders_touch ON public.dhan_orders;
 CREATE TRIGGER dhan_orders_touch
   BEFORE UPDATE ON public.dhan_orders
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
@@ -347,6 +349,7 @@ CREATE OR REPLACE FUNCTION public.touch_dhan_super_orders()
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
 
+DROP TRIGGER IF EXISTS dhan_super_orders_touch ON public.dhan_super_orders;
 CREATE TRIGGER dhan_super_orders_touch
   BEFORE UPDATE ON public.dhan_super_orders
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_super_orders();
@@ -403,6 +406,7 @@ CREATE OR REPLACE FUNCTION public.touch_dhan_forever_orders()
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
 
+DROP TRIGGER IF EXISTS dhan_forever_orders_touch ON public.dhan_forever_orders;
 CREATE TRIGGER dhan_forever_orders_touch
   BEFORE UPDATE ON public.dhan_forever_orders
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_forever_orders();
@@ -464,6 +468,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_positions (
 CREATE OR REPLACE FUNCTION public.touch_dhan_positions()
   RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
+DROP TRIGGER IF EXISTS dhan_positions_touch ON public.dhan_positions;
 CREATE TRIGGER dhan_positions_touch
   BEFORE UPDATE ON public.dhan_positions
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_positions();
@@ -498,6 +503,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_holdings (
 CREATE OR REPLACE FUNCTION public.touch_dhan_holdings()
   RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
+DROP TRIGGER IF EXISTS dhan_holdings_touch ON public.dhan_holdings;
 CREATE TRIGGER dhan_holdings_touch
   BEFORE UPDATE ON public.dhan_holdings
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_holdings();
@@ -530,6 +536,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_conditional_triggers (
 CREATE OR REPLACE FUNCTION public.touch_dhan_conditional_triggers()
   RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
+DROP TRIGGER IF EXISTS dhan_conditional_triggers_touch ON public.dhan_conditional_triggers;
 CREATE TRIGGER dhan_conditional_triggers_touch
   BEFORE UPDATE ON public.dhan_conditional_triggers
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_conditional_triggers();
@@ -559,6 +566,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_pnl_exit_config (
 CREATE OR REPLACE FUNCTION public.touch_dhan_pnl_exit_config()
   RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 
+DROP TRIGGER IF EXISTS dhan_pnl_exit_config_touch ON public.dhan_pnl_exit_config;
 CREATE TRIGGER dhan_pnl_exit_config_touch
   BEFORE UPDATE ON public.dhan_pnl_exit_config
   FOR EACH ROW EXECUTE FUNCTION public.touch_dhan_pnl_exit_config();
@@ -764,6 +772,11 @@ ALTER TABLE public.subscriptions       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_flags        ENABLE ROW LEVEL SECURITY;
 
 -- ── profiles ──────────────────────────────
+DROP POLICY IF EXISTS "Users can read own profile"    ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile"  ON public.profiles;
+DROP POLICY IF EXISTS "Admins can read all profiles"  ON public.profiles;
+DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
+
 CREATE POLICY "Users can read own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
@@ -791,6 +804,9 @@ CREATE POLICY "Admins can update all profiles"
   );
 
 -- ── broker_accounts ──────────────────────
+DROP POLICY IF EXISTS "Users can CRUD own broker accounts"   ON public.broker_accounts;
+DROP POLICY IF EXISTS "Admins can read all broker accounts"  ON public.broker_accounts;
+
 CREATE POLICY "Users can CRUD own broker accounts"
   ON public.broker_accounts FOR ALL
   USING (auth.uid() = user_id);
@@ -805,6 +821,11 @@ CREATE POLICY "Admins can read all broker accounts"
   );
 
 -- ── trade_nodes ──────────────────────────
+DROP POLICY IF EXISTS "Users can read own trades"   ON public.trade_nodes;
+DROP POLICY IF EXISTS "Users can insert own trades" ON public.trade_nodes;
+DROP POLICY IF EXISTS "Admins can read all trades"  ON public.trade_nodes;
+DROP POLICY IF EXISTS "Admins can update all trades" ON public.trade_nodes;
+
 CREATE POLICY "Users can read own trades"
   ON public.trade_nodes FOR SELECT
   USING (auth.uid() = user_id);
@@ -835,6 +856,9 @@ CREATE POLICY "Admins can update all trades"
   );
 
 -- ── copy_subscriptions ────────────────────
+DROP POLICY IF EXISTS "Users can manage own copy subscriptions"          ON public.copy_subscriptions;
+DROP POLICY IF EXISTS "Users can view subscriptions where they are leader" ON public.copy_subscriptions;
+
 CREATE POLICY "Users can manage own copy subscriptions"
   ON public.copy_subscriptions FOR ALL
   USING (auth.uid() = follower_id);
@@ -844,6 +868,12 @@ CREATE POLICY "Users can view subscriptions where they are leader"
   USING (auth.uid() = leader_id);
 
 -- ── dhan_orders ──────────────────────────
+DROP POLICY IF EXISTS "Users can read own dhan orders"   ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can insert own dhan orders" ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can update own dhan orders" ON public.dhan_orders;
+DROP POLICY IF EXISTS "Users can delete own dhan orders" ON public.dhan_orders;
+DROP POLICY IF EXISTS "Admins can read all dhan orders"  ON public.dhan_orders;
+
 CREATE POLICY "Users can read own dhan orders"
   ON public.dhan_orders FOR SELECT
   USING (auth.uid() = user_id);
@@ -870,6 +900,12 @@ CREATE POLICY "Admins can read all dhan orders"
   );
 
 -- ── dhan_super_orders ───────────────────
+DROP POLICY IF EXISTS "Users can read own super orders"   ON public.dhan_super_orders;
+DROP POLICY IF EXISTS "Users can insert own super orders" ON public.dhan_super_orders;
+DROP POLICY IF EXISTS "Users can update own super orders" ON public.dhan_super_orders;
+DROP POLICY IF EXISTS "Users can delete own super orders" ON public.dhan_super_orders;
+DROP POLICY IF EXISTS "Admins can read all super orders"  ON public.dhan_super_orders;
+
 CREATE POLICY "Users can read own super orders"
   ON public.dhan_super_orders FOR SELECT
   USING (auth.uid() = user_id);
@@ -896,6 +932,12 @@ CREATE POLICY "Admins can read all super orders"
   );
 
 -- ── dhan_forever_orders ──────────────────
+DROP POLICY IF EXISTS "Users can read own forever orders"   ON public.dhan_forever_orders;
+DROP POLICY IF EXISTS "Users can insert own forever orders" ON public.dhan_forever_orders;
+DROP POLICY IF EXISTS "Users can update own forever orders" ON public.dhan_forever_orders;
+DROP POLICY IF EXISTS "Users can delete own forever orders" ON public.dhan_forever_orders;
+DROP POLICY IF EXISTS "Admins can read all forever orders"  ON public.dhan_forever_orders;
+
 CREATE POLICY "Users can read own forever orders"
   ON public.dhan_forever_orders FOR SELECT
   USING (auth.uid() = user_id);
@@ -922,6 +964,12 @@ CREATE POLICY "Admins can read all forever orders"
   );
 
 -- ── dhan_holdings ─────────────────────────
+DROP POLICY IF EXISTS "Users can read own holdings"   ON public.dhan_holdings;
+DROP POLICY IF EXISTS "Users can insert own holdings" ON public.dhan_holdings;
+DROP POLICY IF EXISTS "Users can update own holdings" ON public.dhan_holdings;
+DROP POLICY IF EXISTS "Users can delete own holdings" ON public.dhan_holdings;
+DROP POLICY IF EXISTS "Admins can read all holdings"  ON public.dhan_holdings;
+
 CREATE POLICY "Users can read own holdings"
   ON public.dhan_holdings FOR SELECT
   USING (auth.uid() = user_id);
@@ -948,6 +996,12 @@ CREATE POLICY "Admins can read all holdings"
   );
 
 -- ── dhan_conditional_triggers ──────────────────
+DROP POLICY IF EXISTS "Users can read own triggers"   ON public.dhan_conditional_triggers;
+DROP POLICY IF EXISTS "Users can insert own triggers" ON public.dhan_conditional_triggers;
+DROP POLICY IF EXISTS "Users can update own triggers" ON public.dhan_conditional_triggers;
+DROP POLICY IF EXISTS "Users can delete own triggers" ON public.dhan_conditional_triggers;
+DROP POLICY IF EXISTS "Admins can read all triggers"  ON public.dhan_conditional_triggers;
+
 CREATE POLICY "Users can read own triggers"
   ON public.dhan_conditional_triggers FOR SELECT
   USING (auth.uid() = user_id);
@@ -974,6 +1028,9 @@ CREATE POLICY "Admins can read all triggers"
   );
 
 -- ── dhan_pnl_exit_config ───────────────────────
+DROP POLICY IF EXISTS "Users can read own pnl exit config"  ON public.dhan_pnl_exit_config;
+DROP POLICY IF EXISTS "Users can upsert own pnl exit config" ON public.dhan_pnl_exit_config;
+
 CREATE POLICY "Users can read own pnl exit config"
   ON public.dhan_pnl_exit_config FOR SELECT
   USING (auth.uid() = user_id);
@@ -984,6 +1041,12 @@ CREATE POLICY "Users can upsert own pnl exit config"
   WITH CHECK (auth.uid() = user_id);
 
 -- ── dhan_positions ─────────────────────────
+DROP POLICY IF EXISTS "Users can read own positions"   ON public.dhan_positions;
+DROP POLICY IF EXISTS "Users can insert own positions" ON public.dhan_positions;
+DROP POLICY IF EXISTS "Users can update own positions" ON public.dhan_positions;
+DROP POLICY IF EXISTS "Users can delete own positions" ON public.dhan_positions;
+DROP POLICY IF EXISTS "Admins can read all positions"  ON public.dhan_positions;
+
 CREATE POLICY "Users can read own positions"
   ON public.dhan_positions FOR SELECT
   USING (auth.uid() = user_id);
@@ -1010,6 +1073,10 @@ CREATE POLICY "Admins can read all positions"
   );
 
 -- ── dhan_trades ──────────────────────────
+DROP POLICY IF EXISTS "Users can read own dhan trades"   ON public.dhan_trades;
+DROP POLICY IF EXISTS "Users can insert own dhan trades" ON public.dhan_trades;
+DROP POLICY IF EXISTS "Admins can read all dhan trades"  ON public.dhan_trades;
+
 CREATE POLICY "Users can read own dhan trades"
   ON public.dhan_trades FOR SELECT
   USING (auth.uid() = user_id);
@@ -1028,6 +1095,9 @@ CREATE POLICY "Admins can read all dhan trades"
   );
 
 -- ── order_logs ───────────────────────────
+DROP POLICY IF EXISTS "Users read own order logs"  ON public.order_logs;
+DROP POLICY IF EXISTS "Admins read all order logs" ON public.order_logs;
+
 CREATE POLICY "Users read own order logs"
   ON public.order_logs FOR SELECT
   USING (auth.uid() = user_id);
@@ -1042,6 +1112,8 @@ CREATE POLICY "Admins read all order logs"
   );
 
 -- ── trade_events ─────────────────────────
+DROP POLICY IF EXISTS "Users read own trade events" ON public.trade_events;
+
 CREATE POLICY "Users read own trade events"
   ON public.trade_events FOR SELECT
   USING (
@@ -1053,11 +1125,16 @@ CREATE POLICY "Users read own trade events"
   );
 
 -- ── subscriptions ─────────────────────────
+DROP POLICY IF EXISTS "Users read own subscriptions" ON public.subscriptions;
+
 CREATE POLICY "Users read own subscriptions"
   ON public.subscriptions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- ── system_flags ──────────────────────────
+DROP POLICY IF EXISTS "Anyone can read system flags"   ON public.system_flags;
+DROP POLICY IF EXISTS "Admins can upsert system flags" ON public.system_flags;
+
 CREATE POLICY "Anyone can read system flags"
   ON public.system_flags FOR SELECT
   USING (true);
@@ -1072,6 +1149,9 @@ CREATE POLICY "Admins can upsert system flags"
   );
 
 -- ── dhan_ledger ───────────────────────────
+DROP POLICY IF EXISTS "Users read own ledger"       ON public.dhan_ledger;
+DROP POLICY IF EXISTS "Service role manage ledger"  ON public.dhan_ledger;
+
 CREATE POLICY "Users read own ledger"
   ON public.dhan_ledger FOR SELECT
   USING (auth.uid() = user_id);
@@ -1082,6 +1162,9 @@ CREATE POLICY "Service role manage ledger"
   WITH CHECK (true);
 
 -- ── dhan_trade_history ───────────────────
+DROP POLICY IF EXISTS "Users read own trade history"         ON public.dhan_trade_history;
+DROP POLICY IF EXISTS "Service role manage trade history"    ON public.dhan_trade_history;
+
 CREATE POLICY "Users read own trade history"
   ON public.dhan_trade_history FOR SELECT
   USING (auth.uid() = user_id);
@@ -1092,6 +1175,9 @@ CREATE POLICY "Service role manage trade history"
   WITH CHECK (true);
 
 -- ── dhan_postback_logs ───────────────────
+DROP POLICY IF EXISTS "Users read own postback logs"        ON public.dhan_postback_logs;
+DROP POLICY IF EXISTS "Service role manage postback logs"   ON public.dhan_postback_logs;
+
 CREATE POLICY "Users read own postback logs"
   ON public.dhan_postback_logs FOR SELECT
   USING (auth.uid() = user_id);
