@@ -30,14 +30,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (!error && data) {
-      setProfile(data as Profile);
+      if (!error && data) {
+        setProfile(data as Profile);
+      }
+    } catch {
+      // swallow — loading will be cleared in finally
     }
   }, []);
 
@@ -46,8 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id, fetchProfile]);
 
   useEffect(() => {
+    // Safety net: never stay in loading > 6 seconds
+    const fallback = setTimeout(() => setLoading(false), 6000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(fallback);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -55,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setLoading(false);
       }
-    });
+    }).catch(() => { clearTimeout(fallback); setLoading(false); });
 
     // Listen for auth changes
     const {
@@ -75,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); clearTimeout(fallback); };
   }, [fetchProfile]);
 
   const signIn = async (

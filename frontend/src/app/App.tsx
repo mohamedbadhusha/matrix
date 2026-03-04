@@ -58,8 +58,19 @@ function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // profile null = trigger race on first signup; wait for it to load
-  if (!profile) return <LoadingScreen />;
+  // Profile fetch failed (schema issue / RLS) — show retry rather than infinite loader
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-navy flex items-center justify-center">
+        <div className="panel p-8 text-center max-w-sm space-y-3">
+          <p className="text-muted text-sm">Could not load profile. Check your connection.</p>
+          <button className="btn-secondary text-xs" onClick={() => window.location.reload()}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!profile.is_active) {
     return (
