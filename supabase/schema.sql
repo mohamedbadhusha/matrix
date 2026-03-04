@@ -748,6 +748,15 @@ CREATE INDEX IF NOT EXISTS dhan_postback_order_idx   ON public.dhan_postback_log
 CREATE INDEX IF NOT EXISTS dhan_postback_status_idx  ON public.dhan_postback_logs(order_status);
 
 -- ============================================================
+-- HELPER: non-recursive role check (SECURITY DEFINER bypasses RLS)
+-- Used by all admin policies to avoid infinite recursion on profiles table.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS TEXT LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid()
+$$;
+
+-- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
 
@@ -788,19 +797,13 @@ CREATE POLICY "Users can update own profile"
 CREATE POLICY "Admins can read all profiles"
   ON public.profiles FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 CREATE POLICY "Admins can update all profiles"
   ON public.profiles FOR UPDATE
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── broker_accounts ──────────────────────
@@ -814,10 +817,7 @@ CREATE POLICY "Users can CRUD own broker accounts"
 CREATE POLICY "Admins can read all broker accounts"
   ON public.broker_accounts FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── trade_nodes ──────────────────────────
@@ -840,19 +840,13 @@ CREATE POLICY "Users can insert own trades"
 CREATE POLICY "Admins can read all trades"
   ON public.trade_nodes FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 CREATE POLICY "Admins can update all trades"
   ON public.trade_nodes FOR UPDATE
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── copy_subscriptions ────────────────────
@@ -893,10 +887,7 @@ CREATE POLICY "Users can delete own dhan orders"
 CREATE POLICY "Admins can read all dhan orders"
   ON public.dhan_orders FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_super_orders ───────────────────
@@ -925,10 +916,7 @@ CREATE POLICY "Users can delete own super orders"
 CREATE POLICY "Admins can read all super orders"
   ON public.dhan_super_orders FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_forever_orders ──────────────────
@@ -957,10 +945,7 @@ CREATE POLICY "Users can delete own forever orders"
 CREATE POLICY "Admins can read all forever orders"
   ON public.dhan_forever_orders FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_holdings ─────────────────────────
@@ -989,10 +974,7 @@ CREATE POLICY "Users can delete own holdings"
 CREATE POLICY "Admins can read all holdings"
   ON public.dhan_holdings FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_conditional_triggers ──────────────────
@@ -1021,10 +1003,7 @@ CREATE POLICY "Users can delete own triggers"
 CREATE POLICY "Admins can read all triggers"
   ON public.dhan_conditional_triggers FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_pnl_exit_config ───────────────────────
@@ -1066,10 +1045,7 @@ CREATE POLICY "Users can delete own positions"
 CREATE POLICY "Admins can read all positions"
   ON public.dhan_positions FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_trades ──────────────────────────
@@ -1088,10 +1064,7 @@ CREATE POLICY "Users can insert own dhan trades"
 CREATE POLICY "Admins can read all dhan trades"
   ON public.dhan_trades FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── order_logs ───────────────────────────
@@ -1105,10 +1078,7 @@ CREATE POLICY "Users read own order logs"
 CREATE POLICY "Admins read all order logs"
   ON public.order_logs FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── trade_events ─────────────────────────
@@ -1142,10 +1112,7 @@ CREATE POLICY "Anyone can read system flags"
 CREATE POLICY "Admins can upsert system flags"
   ON public.system_flags FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role IN ('admin', 'super_admin')
-    )
+    public.current_user_role() IN ('admin', 'super_admin')
   );
 
 -- ── dhan_ledger ───────────────────────────
