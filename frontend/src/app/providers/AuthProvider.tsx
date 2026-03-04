@@ -91,14 +91,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
   ): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
       },
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+
+    // Retry fetching profile: the on_auth_user_created trigger on Supabase
+    // can have a short race with the client-side fetchProfile call.
+    if (data.user) {
+      const uid = data.user.id;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise(r => setTimeout(r, 500));
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', uid)
+          .single();
+        if (prof) { setProfile(prof as Profile); break; }
+      }
+    }
+    return { error: null };
   };
 
   const signOut = async () => {

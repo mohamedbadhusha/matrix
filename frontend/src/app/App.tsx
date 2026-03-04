@@ -58,13 +58,17 @@ function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (!profile?.is_active) {
+  // profile null = trigger race on first signup; wait for it to load
+  if (!profile) return <LoadingScreen />;
+
+  if (!profile.is_active) {
     return (
       <div className="min-h-screen bg-navy flex items-center justify-center">
         <div className="panel p-8 text-center max-w-sm">
           <p className="text-loss font-semibold mb-2">Account Suspended</p>
           <p className="text-muted text-sm">
-            Your account has been suspended. Contact support.
+            Your account has been suspended. Contact{' '}
+            <a href="mailto:support@matrixpro.in" className="text-accent-cyan underline">support</a>.
           </p>
         </div>
       </div>
