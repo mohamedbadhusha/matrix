@@ -1190,16 +1190,17 @@ CREATE POLICY "Service role manage postback logs"
 -- ============================================================
 -- REALTIME publications
 -- ============================================================
--- Enable realtime for trade_nodes (for live LTP updates in UI)
-ALTER PUBLICATION supabase_realtime ADD TABLE public.trade_nodes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.system_flags;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_super_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_forever_orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_positions;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_holdings;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_conditional_triggers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_postback_logs;
+-- Enable realtime for live LTP updates in UI.
+-- DO blocks swallow 42710 (already a member) so re-runs are safe.
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.trade_nodes;              EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.system_flags;             EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_orders;              EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_super_orders;        EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_forever_orders;      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_positions;           EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_holdings;            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_conditional_triggers; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_postback_logs;       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================
 -- Done!
