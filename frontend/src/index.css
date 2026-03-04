@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-navy text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0F3460; }
+  ::-webkit-scrollbar-thumb { background: #2A3A5C; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+  ::selection { background: rgba(0, 212, 255, 0.2); color: #00D4FF; }
+}
+
+@layer components {
+  .panel      { @apply bg-panel-dark border border-border rounded-xl shadow-panel; }
+  .panel-mid  { @apply bg-panel-mid border border-border rounded-xl; }
+
+  .glow-cyan   { box-shadow: inset 3px 0 0 #00D4FF, 0 4px 24px rgba(0,0,0,0.4); }
+  .glow-green  { box-shadow: inset 3px 0 0 #00C896, 0 4px 24px rgba(0,0,0,0.4); }
+  .glow-red    { box-shadow: inset 3px 0 0 #FF4757, 0 4px 24px rgba(0,0,0,0.4); }
+  .glow-purple { box-shadow: inset 3px 0 0 #7B2FBE, 0 4px 24px rgba(0,0,0,0.4); }
+  .glow-orange { box-shadow: inset 3px 0 0 #FF6B35, 0 4px 24px rgba(0,0,0,0.4); }
+
+  .pnl-positive { @apply text-profit font-mono font-bold; }
+  .pnl-negative { @apply text-loss font-mono font-bold; }
+  .pnl-neutral  { @apply text-muted font-mono font-bold; }
+
+  .badge        { @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border; }
+  .tier-free    { @apply badge bg-border/50 text-muted border-border; }
+  .tier-pro     { @apply badge bg-cyan-400/10 text-cyan-400 border-cyan-400/30; }
+  .tier-elite   { @apply badge bg-purple-400/10 text-purple-400 border-purple-400/30; }
+
+  .price { @apply font-mono font-bold tabular-nums; }
+
+  .input-base {
+    @apply w-full bg-panel-mid border border-border rounded-lg px-3 py-2 text-sm
+           text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent-cyan
+           transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-accent-cyan text-navy font-semibold px-4 py-2 rounded-lg text-sm
+           hover:bg-cyan-300 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-panel-mid border border-border text-foreground font-medium px-4 py-2 rounded-lg text-sm
+           hover:border-accent-cyan hover:text-accent-cyan active:scale-[0.98] transition-all;
+  }
+  .btn-danger {
+    @apply bg-loss/10 border border-loss/30 text-loss font-medium px-4 py-2 rounded-lg text-sm
+           hover:bg-loss/20 active:scale-[0.98] transition-all disabled:opacity-40;
+  }
+  .btn-success {
+    @apply bg-profit/10 border border-profit/30 text-profit font-medium px-4 py-2 rounded-lg text-sm
+           hover:bg-profit/20 active:scale-[0.98] transition-all;
+  }
+
+  .table-base { @apply w-full text-sm; }
+  .table-base thead tr { @apply border-b border-border; }
+  .table-base thead th { @apply text-left text-muted font-medium py-3 px-4; }
+  .table-base tbody tr { @apply border-b border-border/50 hover:bg-panel-mid/50 transition-colors; }
+  .table-base tbody td { @apply py-3 px-4; }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           text-muted transition-all cursor-pointer;
+  }
+  .nav-item:hover { @apply bg-panel-mid text-foreground; }
+  .nav-item.active { @apply bg-accent-cyan/10 text-accent-cyan; }
+
+  .live-badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium
+           bg-profit/10 text-profit border border-profit/20;
+  }
+
+  .dot-live   { @apply w-2 h-2 rounded-full bg-profit animate-pulse; }
+  .dot-paper  { @apply w-2 h-2 rounded-full bg-warning; }
+  .dot-closed { @apply w-2 h-2 rounded-full bg-muted; }
+  .dot-killed { @apply w-2 h-2 rounded-full bg-loss; }
+}
+
+@layer utilities {
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, #00D4FF, #60A5FA);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-purple {
+    background: linear-gradient(135deg, #7B2FBE, #F472B6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .bg-grid {
+    background-image: linear-gradient(rgba(42,58,92,0.3) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(42,58,92,0.3) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+}
