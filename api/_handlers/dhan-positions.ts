@@ -1,12 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 interface DhanPositionRow {
   dhanClientId: string;
@@ -42,16 +35,12 @@ interface DhanPositionRow {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (checkEnv(res)) return;
 
   const { brokerId } = req.body ?? {};
   if (!brokerId) return res.status(400).json({ error: 'brokerId required' });
 
-  const { data: broker, error } = await supabase
-    .from('broker_accounts')
-    .select('access_token, api_key, client_id, user_id')
-    .eq('id', brokerId)
-    .single();
-
+  const { broker, error } = await getBroker(brokerId);
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
   try {
@@ -64,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!dhanRes.ok) {
       const body = await dhanRes.json().catch(() => ({}));
-      await supabase
+      await supabaseAdmin
         .from('broker_accounts')
         .update({ health_status: 'ERROR', last_checked_at: new Date().toISOString() })
         .eq('id', brokerId);
@@ -74,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await dhanRes.json() as DhanPositionRow[];
 
     // Update health status
-    await supabase
+    await supabaseAdmin
       .from('broker_accounts')
       .update({ health_status: 'OK', failure_count: 0, last_checked_at: new Date().toISOString() })
       .eq('id', brokerId);
@@ -115,12 +104,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         raw_response:             p as unknown as Record<string, unknown>,
       }));
 
-      await supabase
+      await supabaseAdmin
         .from('dhan_positions')
         .upsert(rows, { onConflict: 'user_id,broker_account_id,security_id,product_type,exchange_segment' });
     } else if (Array.isArray(data) && data.length === 0) {
       // Flat position — delete stale rows for this broker
-      await supabase
+      await supabaseAdmin
         .from('dhan_positions')
         .delete()
         .eq('broker_account_id', brokerId);

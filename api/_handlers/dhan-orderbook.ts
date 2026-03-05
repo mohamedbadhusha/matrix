@@ -4,28 +4,17 @@
  * Upserts results into dhan_orders for local cache and history.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+import { checkEnv, getBroker, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (checkEnv(res)) return;
 
   const { brokerId } = req.query;
   if (!brokerId) return res.status(400).json({ error: 'brokerId query param required' });
 
-  const { data: broker, error: bErr } = await supabase
-    .from('broker_accounts')
-    .select('id, client_id, access_token, user_id')
-    .eq('id', brokerId as string)
-    .single();
-
+  const { broker, error: bErr } = await getBroker(brokerId as string);
   if (bErr || !broker) return res.status(404).json({ error: 'Broker account not found' });
   if (!broker.access_token) return res.status(400).json({ error: 'No access token configured' });
 
@@ -87,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
 
       // Upsert on natural key (user_id, order_id)
-      await supabase.from('dhan_orders').upsert(rows, {
+      await supabaseAdmin.from('dhan_orders').upsert(rows, {
         onConflict: 'user_id,order_id',
         ignoreDuplicates: false,
       });

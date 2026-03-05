@@ -4,18 +4,12 @@
  * GET    /api/dhan-pnl-exit?brokerId=xxx
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!['POST', 'DELETE', 'GET'].includes(req.method ?? '')) return res.status(405).json({ error: 'Method not allowed' });
+  if (checkEnv(res)) return;
 
   const brokerId = req.method === 'GET'
     ? (req.query as Record<string, string>).brokerId
@@ -23,19 +17,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!brokerId) return res.status(400).json({ error: 'brokerId required' });
 
-  const { data: broker, error } = await supabase
-    .from('broker_accounts')
-    .select('access_token, api_key, client_id, user_id')
-    .eq('id', brokerId)
-    .single();
-
+  const { broker, error } = await getBroker(brokerId);
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
-  const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'access-token': broker.access_token ?? broker.api_key,
-    'client-id': broker.client_id,
-  };
+  // P&L exit is not supported for paper/sandbox accounts
+  if (broker.mode === 'PAPER') {
+    return res.status(200).json({ pnlExitStatus: 'PAPER_ACCOUNT', paperAccount: true });
+  }
+
+  const headers = dhanHeaders(broker);
 
   try {
     if (req.method === 'GET') {
@@ -51,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: data.errorMessage ?? 'Stop P&L exit failed' });
 
       // Clear DB config
-      await supabase.from('dhan_pnl_exit_config').delete().eq('broker_account_id', brokerId);
+      await supabaseAdmin.from('dhan_pnl_exit_config').delete().eq('broker_account_id', brokerId);
 
       return res.status(200).json(data);
     }
@@ -72,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: data.errorMessage ?? 'Configure P&L exit failed' });
 
     // Upsert config in DB
-    await supabase.from('dhan_pnl_exit_config').upsert({
+    await supabaseAdmin.from('dhan_pnl_exit_config').upsert({
       user_id: broker.user_id,
       broker_account_id: brokerId,
       profit_value: Number(profitValue),

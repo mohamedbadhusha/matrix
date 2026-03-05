@@ -3,18 +3,12 @@
  * GET  /api/dhan-killswitch?brokerId=xxx
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (checkEnv(res)) return;
 
   const brokerId = req.method === 'GET'
     ? (req.query as Record<string, string>).brokerId
@@ -22,22 +16,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!brokerId) return res.status(400).json({ error: 'brokerId required' });
 
-  const { data: broker, error } = await supabase
-    .from('broker_accounts')
-    .select('access_token, api_key, client_id')
-    .eq('id', brokerId)
-    .single();
-
+  const { broker, error } = await getBroker(brokerId);
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
+
+  // Kill switch is not supported for paper/sandbox accounts
+  if (broker.mode === 'PAPER') {
+    return res.status(200).json({ dhanClientId: broker.client_id, killSwitchStatus: 'PAPER_ACCOUNT', paperAccount: true });
+  }
 
   try {
     if (req.method === 'GET') {
       const dhanRes = await fetch(`${DHAN_BASE}/killswitch`, {
-        headers: {
-          'Accept': 'application/json',
-          'access-token': broker.access_token ?? broker.api_key,
-          'client-id': broker.client_id,
-        },
+        headers: dhanHeaders(broker),
       });
       const data = await dhanRes.json() as { dhanClientId?: string; killSwitchStatus?: string; errorMessage?: string };
       if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: data.errorMessage ?? 'Kill switch status failed' });
@@ -52,12 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const dhanRes = await fetch(`${DHAN_BASE}/killswitch?killSwitchStatus=${action}`, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'access-token': broker.access_token ?? broker.api_key,
-        'client-id': broker.client_id,
-      },
+      headers: dhanHeaders(broker),
     });
 
     const data = await dhanRes.json() as { dhanClientId?: string; killSwitchStatus?: string; errorMessage?: string };
@@ -65,9 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Update broker health record
     if (action === 'ACTIVATE') {
-      await supabase.from('broker_accounts').update({ health_status: 'KILL_SWITCH' }).eq('id', brokerId);
+      await supabaseAdmin.from('broker_accounts').update({ health_status: 'KILL_SWITCH' }).eq('id', brokerId);
     } else {
-      await supabase.from('broker_accounts').update({ health_status: 'OK' }).eq('id', brokerId);
+      await supabaseAdmin.from('broker_accounts').update({ health_status: 'OK' }).eq('id', brokerId);
     }
 
     return res.status(200).json(data);

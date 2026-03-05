@@ -4,14 +4,7 @@
  * Upserts results into dhan_forever_orders table.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 interface DhanForeverOrderRaw {
   dhanClientId: string;
