@@ -57,56 +57,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Hard safety net — never stay stuck in loading more than 5 seconds
+    // Hard safety net — never stay stuck in loading more than 8 seconds
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 5000);
+    }, 8000);
 
-    // ── Step 1: bootstrap the initial session from localStorage / cookie ──
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout);
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
-    }).catch(() => {
-      clearTimeout(timeout);
-      if (mounted) setLoading(false);
-    });
-
-    // ── Step 2: listen for subsequent changes (sign-in, sign-out, token refresh) ──
+    // Use ONLY onAuthStateChange — it fires INITIAL_SESSION first which
+    // covers the getSession() case without competing for the same Web Lock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // INITIAL_SESSION is already handled by getSession() above — skip it
-        if (event === 'INITIAL_SESSION') return;
         if (!mounted) return;
 
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (event === 'SIGNED_OUT') {
-          // User logged out — clear profile, no loading screen needed
-          setProfile(null);
-          return;
-        }
-
-        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          // Silent background event — update session only, no loading spinner
+        if (event === 'INITIAL_SESSION') {
+          // App just loaded — bootstrap profile from existing session
+          clearTimeout(timeout);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
+          if (mounted) setLoading(false);
           return;
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Fresh login — show spinner while profile loads
+          // Fresh login — fetch profile (loading already false, ProtectedRoute waits on profile)
           setLoading(true);
           await fetchProfile(session.user.id);
           if (mounted) setLoading(false);
+          return;
         }
+
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // TOKEN_REFRESHED / USER_UPDATED — silent, no spinner
       },
     );
 
