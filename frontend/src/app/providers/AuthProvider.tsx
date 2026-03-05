@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
@@ -28,6 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Tracks whether we have successfully loaded a profile in this session.
+  // Prevents re-fetching (and the resulting "Could not load profile" flash)
+  // when the browser fires a duplicate SIGNED_IN on tab focus / token refresh.
+  const profileLoadedRef = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string): Promise<boolean> => {
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -40,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!error && data) {
           setProfile(data as Profile);
+          profileLoadedRef.current = true;
           return true;
         }
       } catch {
@@ -82,7 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Fresh login — fetch profile (loading already false, ProtectedRoute waits on profile)
+          // If profile is already loaded this session (e.g. tab regained focus
+          // and Supabase re-fired SIGNED_IN after a background token refresh),
+          // do nothing — avoids the "Could not load profile" flash.
+          if (profileLoadedRef.current) return;
+          // Fresh login — fetch profile.
           setLoading(true);
           await fetchProfile(session.user.id);
           if (mounted) setLoading(false);
@@ -91,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'SIGNED_OUT') {
           setProfile(null);
+          profileLoadedRef.current = false;
           setLoading(false);
           return;
         }
