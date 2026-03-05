@@ -57,8 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Hard safety net — never stay stuck in loading more than 5 seconds
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
+
     // ── Step 1: bootstrap the initial session from localStorage / cookie ──
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
       if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
@@ -70,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }).catch(() => {
+      clearTimeout(timeout);
       if (mounted) setLoading(false);
     });
 
@@ -105,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
