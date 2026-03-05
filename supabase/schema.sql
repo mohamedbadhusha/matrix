@@ -841,10 +841,30 @@ CREATE POLICY "Admins can update all profiles"
 
 -- ── broker_accounts ──────────────────────
 DROP POLICY IF EXISTS "Users can CRUD own broker accounts"   ON public.broker_accounts;
+DROP POLICY IF EXISTS "Users can read own broker accounts"   ON public.broker_accounts;
+DROP POLICY IF EXISTS "Users can insert own broker accounts" ON public.broker_accounts;
+DROP POLICY IF EXISTS "Users can update own broker accounts" ON public.broker_accounts;
+DROP POLICY IF EXISTS "Users can delete own broker accounts" ON public.broker_accounts;
 DROP POLICY IF EXISTS "Admins can read all broker accounts"  ON public.broker_accounts;
 
-CREATE POLICY "Users can CRUD own broker accounts"
-  ON public.broker_accounts FOR ALL
+-- Split FOR ALL into explicit ops so INSERT always has a WITH CHECK clause.
+-- (FOR ALL with only USING applies USING as WITH CHECK, but some Postgres
+-- versions and Supabase edge cases need it explicit.)
+CREATE POLICY "Users can read own broker accounts"
+  ON public.broker_accounts FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own broker accounts"
+  ON public.broker_accounts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own broker accounts"
+  ON public.broker_accounts FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own broker accounts"
+  ON public.broker_accounts FOR DELETE
   USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can read all broker accounts"

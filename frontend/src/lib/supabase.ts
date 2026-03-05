@@ -14,6 +14,9 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      // Consistent key ensures all tabs share the same lock namespace
+      // instead of fighting over it — eliminates the Web Lock "steal" error.
+      storageKey: 'matrix-pro-v2-auth',
     },
     realtime: {
       params: {
