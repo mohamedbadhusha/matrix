@@ -131,37 +131,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal error' });
   }
 }
-
-
-  if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
-
-  try {
-    const dhanRes = await fetch(`${DHAN_BASE}/positions`, {
-      headers: {
-        'access-token': broker.access_token ?? broker.api_key,
-        'client-id': broker.client_id,
-      },
-    });
-
-    if (!dhanRes.ok) {
-      const body = await dhanRes.json().catch(() => ({}));
-      await supabase
-        .from('broker_accounts')
-        .update({ health_status: 'ERROR', last_checked_at: new Date().toISOString() })
-        .eq('id', brokerId);
-      return res.status(dhanRes.status).json({ error: body.errorMessage ?? 'Positions fetch failed' });
-    }
-
-    const data = await dhanRes.json();
-
-    // Update health status
-    await supabase
-      .from('broker_accounts')
-      .update({ health_status: 'OK', failure_count: 0, last_checked_at: new Date().toISOString() })
-      .eq('id', brokerId);
-
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal error' });
-  }
-}
