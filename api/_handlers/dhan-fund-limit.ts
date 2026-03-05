@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkEnv, getBroker, dhanHeaders, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { checkEnv, getBroker, dhanHeaders, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const dhanRes = await fetch(`${DHAN_BASE}/fundlimit`, {
+    const dhanRes = await fetch(`${dhanBase}/fundlimit`, {
       headers: dhanHeaders(broker),
     });
 

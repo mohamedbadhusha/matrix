@@ -5,7 +5,7 @@
  * Pass-through: no DB storage (pure real-time data).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
   try {
-    const dhanRes = await fetch(`${DHAN_BASE}/optionchain`, {
+    const dhanRes = await fetch(`${dhanBase}/optionchain`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',

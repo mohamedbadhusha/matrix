@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     if (triggerPrice !== undefined) body.triggerPrice = triggerPrice;
 
-    const dhanRes = await fetch(`${DHAN_BASE}/margincalculator`, {
+    const dhanRes = await fetch(`${dhanBase}/margincalculator`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

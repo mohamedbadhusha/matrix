@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, getDhanBase } from '../_lib/supabase-admin.js';
 
 interface DhanPositionRow {
   dhanClientId: string;
@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
   try {
-    const dhanRes = await fetch(`${DHAN_BASE}/positions`, {
+    const dhanRes = await fetch(`${dhanBase}/positions`, {
       headers: {
         'access-token': broker.access_token ?? broker.api_key,
         'client-id': broker.client_id,

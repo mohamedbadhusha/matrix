@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 interface DhanLedgerRow {
   dhanClientId: string;
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
   try {
-    const url = `${DHAN_BASE}/ledger?from-date=${fromDate}&to-date=${toDate}`;
+    const url = `${dhanBase}/ledger?from-date=${fromDate}&to-date=${toDate}`;
     const dhanRes = await fetch(url, {
       headers: {
         'Accept': 'application/json',

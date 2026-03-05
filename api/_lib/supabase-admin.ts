@@ -66,4 +66,13 @@ export function dhanHeaders(broker: BrokerRow): Record<string, string> {
   };
 }
 
-export const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+export const DHAN_LIVE    = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+export const DHAN_SANDBOX = 'https://sandbox.dhan.co/v2';
+
+/** Returns the correct Dhan base URL for the given broker account. */
+export function getDhanBase(broker: BrokerRow): string {
+  return broker.mode === 'PAPER' ? DHAN_SANDBOX : DHAN_LIVE;
+}
+
+/** @deprecated Use getDhanBase(broker) to respect PAPER/LIVE mode */
+export const DHAN_BASE = DHAN_LIVE;

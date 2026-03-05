@@ -4,7 +4,7 @@
  * GET    /api/dhan-pnl-exit?brokerId=xxx
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -29,14 +29,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const dhanRes = await fetch(`${DHAN_BASE}/pnlExit`, { headers });
+      const dhanRes = await fetch(`${dhanBase}/pnlExit`, { headers });
       const data = await dhanRes.json() as { pnlExitStatus?: string; errorMessage?: string };
       if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: data.errorMessage ?? 'Get P&L exit failed' });
       return res.status(200).json(data);
     }
 
     if (req.method === 'DELETE') {
-      const dhanRes = await fetch(`${DHAN_BASE}/pnlExit`, { method: 'DELETE', headers });
+      const dhanRes = await fetch(`${dhanBase}/pnlExit`, { method: 'DELETE', headers });
       const data = await dhanRes.json() as { pnlExitStatus?: string; message?: string; errorMessage?: string };
       if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: data.errorMessage ?? 'Stop P&L exit failed' });
 
@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'profitValue, lossValue and productType required' });
     }
 
-    const dhanRes = await fetch(`${DHAN_BASE}/pnlExit`, {
+    const dhanRes = await fetch(`${dhanBase}/pnlExit`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ profitValue, lossValue, productType, enableKillSwitch: enableKillSwitch ?? false }),

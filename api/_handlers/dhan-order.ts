@@ -8,7 +8,7 @@
  * Saves a record to dhan_orders and order_logs on success.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 interface PlaceOrderBody {
   brokerId: string;
@@ -51,6 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (bErr || !broker) return res.status(404).json({ error: 'Broker account not found' });
+  const dhanBase = getDhanBase(broker);
   if (!broker.access_token) return res.status(400).json({ error: 'No access token configured' });
 
   // ── Resolve order parameters ────────────────────────────────────────────
@@ -118,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const endpoint = slicing ? `${DHAN_BASE}/orders/slicing` : `${DHAN_BASE}/orders`;
+    const endpoint = slicing ? `${dhanBase}/orders/slicing` : `${dhanBase}/orders`;
     const dhanRes = await fetch(endpoint, {
       method: 'POST',
       headers: {

@@ -3,7 +3,7 @@
  * Cancels a pending Forever Order via Dhan DELETE /v2/forever/orders/{order-id}.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -21,10 +21,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (bErr || !broker) return res.status(404).json({ error: 'Broker account not found' });
+  const dhanBase = getDhanBase(broker);
   if (!broker.access_token) return res.status(400).json({ error: 'No access token configured' });
 
   try {
-    const dhanRes = await fetch(`${DHAN_BASE}/forever/orders/${orderId}`, {
+    const dhanRes = await fetch(`${dhanBase}/forever/orders/${orderId}`, {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',

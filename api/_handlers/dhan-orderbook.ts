@@ -4,7 +4,7 @@
  * Upserts results into dhan_orders for local cache and history.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkEnv, getBroker, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { checkEnv, getBroker, supabaseAdmin, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -16,10 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { broker, error: bErr } = await getBroker(brokerId as string);
   if (bErr || !broker) return res.status(404).json({ error: 'Broker account not found' });
+  const dhanBase = getDhanBase(broker);
   if (!broker.access_token) return res.status(400).json({ error: 'No access token configured' });
 
   try {
-    const dhanRes = await fetch(`${DHAN_BASE}/orders`, {
+    const dhanRes = await fetch(`${dhanBase}/orders`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

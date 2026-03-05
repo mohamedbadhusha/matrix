@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
 
   try {
-    const url = `${DHAN_BASE}/trades/${fromDate}/${toDate}/${page}`;
+    const url = `${dhanBase}/trades/${fromDate}/${toDate}/${page}`;
     const dhanRes = await fetch(url, {
       headers: {
         'Accept': 'application/json',

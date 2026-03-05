@@ -3,7 +3,7 @@
  * GET  /api/dhan-killswitch?brokerId=xxx
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
+import { checkEnv, getBroker, dhanHeaders, supabaseAdmin, getDhanBase } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      const dhanRes = await fetch(`${DHAN_BASE}/killswitch`, {
+      const dhanRes = await fetch(`${dhanBase}/killswitch`, {
         headers: dhanHeaders(broker),
       });
       const data = await dhanRes.json() as { dhanClientId?: string; killSwitchStatus?: string; errorMessage?: string };
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'action must be ACTIVATE or DEACTIVATE' });
     }
 
-    const dhanRes = await fetch(`${DHAN_BASE}/killswitch?killSwitchStatus=${action}`, {
+    const dhanRes = await fetch(`${dhanBase}/killswitch?killSwitchStatus=${action}`, {
       method: 'POST',
       headers: dhanHeaders(broker),
     });
