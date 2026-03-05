@@ -29,20 +29,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+  const fetchProfile = useCallback(async (userId: string): Promise<boolean> => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-      if (!error && data) {
-        setProfile(data as Profile);
+        if (!error && data) {
+          setProfile(data as Profile);
+          return true;
+        }
+      } catch {
+        // retry
       }
-    } catch {
-      // swallow — loading will be cleared in finally
+      if (attempt < 4) await new Promise(r => setTimeout(r, 600));
     }
+    return false;
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -50,40 +55,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id, fetchProfile]);
 
   useEffect(() => {
-    // Safety net: never stay in loading > 6 seconds
-    const fallback = setTimeout(() => setLoading(false), 6000);
+    let mounted = true;
 
-    // Get initial session
+    // ── Step 1: bootstrap the initial session from localStorage / cookie ──
     supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(fallback);
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
+        fetchProfile(session.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
       } else {
         setLoading(false);
       }
-    }).catch(() => { clearTimeout(fallback); setLoading(false); });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-
-      if (event === 'SIGNED_OUT') {
-        setProfile(null);
-      }
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
 
-    return () => { subscription.unsubscribe(); clearTimeout(fallback); };
+    // ── Step 2: listen for subsequent changes (sign-in, sign-out, token refresh) ──
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // INITIAL_SESSION is already handled by getSession() above
+        if (event === 'INITIAL_SESSION') return;
+        if (!mounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          setLoading(true);
+          await fetchProfile(session.user.id);
+          if (mounted) setLoading(false);
+        } else {
+          setProfile(null);
+          setLoading(false);
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signIn = async (

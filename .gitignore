@@ -42,3 +42,4 @@ vite.config.ts.timestamp-*
 
 # Python temp scripts
 write_docs.py
+.env*.local
