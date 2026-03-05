@@ -9,7 +9,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { checkEnv, getBroker, supabaseAdmin, DHAN_BASE } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (checkEnv(res)) return;
