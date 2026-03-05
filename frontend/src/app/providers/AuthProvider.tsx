@@ -76,20 +76,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // ── Step 2: listen for subsequent changes (sign-in, sign-out, token refresh) ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // INITIAL_SESSION is already handled by getSession() above
+        // INITIAL_SESSION is already handled by getSession() above — skip it
         if (event === 'INITIAL_SESSION') return;
         if (!mounted) return;
 
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
+        if (event === 'SIGNED_OUT') {
+          // User logged out — clear profile, no loading screen needed
+          setProfile(null);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+          // Silent background event — update session only, no loading spinner
+          return;
+        }
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Fresh login — show spinner while profile loads
           setLoading(true);
           await fetchProfile(session.user.id);
           if (mounted) setLoading(false);
-        } else {
-          setProfile(null);
-          setLoading(false);
         }
       },
     );
