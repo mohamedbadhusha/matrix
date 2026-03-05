@@ -769,12 +769,24 @@ CREATE INDEX IF NOT EXISTS dhan_postback_order_idx   ON public.dhan_postback_log
 CREATE INDEX IF NOT EXISTS dhan_postback_status_idx  ON public.dhan_postback_logs(order_status);
 
 -- ============================================================
--- HELPER: non-recursive role check (SECURITY DEFINER bypasses RLS)
--- Used by all admin policies to avoid infinite recursion on profiles table.
+-- HELPER FUNCTIONS  (SECURITY DEFINER — bypass RLS)
 -- ============================================================
+
+-- 1. Non-recursive role check used by all admin policies.
+--    Calling current_user_role() from inside a policy avoids the
+--    infinite recursion that a nested EXISTS(SELECT … FROM profiles) causes.
 CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS TEXT LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT role FROM public.profiles WHERE id = auth.uid()
+$$;
+
+-- 2. Safe profile fetch for the frontend.
+--    Called via supabase.rpc('get_my_profile') — bypasses RLS entirely so
+--    the admin policy recursion can never block a user from reading their
+--    own row, even before the RLS policies are replaced.
+CREATE OR REPLACE FUNCTION public.get_my_profile()
+RETURNS SETOF public.profiles LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT * FROM public.profiles WHERE id = auth.uid() LIMIT 1;
 $$;
 
 -- ============================================================

@@ -11,6 +11,24 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Profile } from '@/types';
 
+// Minimal profile built from session data when the DB fetch fails.
+// Lets the user into the app so they're not permanently blocked.
+// Role defaults to 'member' — will be corrected once the RLS SQL fix is applied.
+function buildFallbackProfile(user: User): Profile {
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    full_name: (user.user_metadata?.full_name as string | undefined) ?? user.email ?? null,
+    role: 'member',
+    tier: 'free',
+    is_active: true,
+    daily_trades_used: 0,
+    daily_trades_reset_at: null,
+    created_at: user.created_at,
+    updated_at: user.created_at,
+  };
+}
+
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
@@ -37,12 +55,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (userId: string): Promise<boolean> => {
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
+        // Use the SECURITY DEFINER RPC so the request bypasses RLS admin
+        // policies entirely — avoids the recursive profile lookup 500 error.
+        // Falls back to direct table query if the function doesn't exist yet.
+        const rpcResult = await supabase.rpc('get_my_profile' as never);
+        const rpcData = (rpcResult.data as Profile[] | null)?.[0];
+        if (!rpcResult.error && rpcData) {
+          setProfile(rpcData);
+          profileLoadedRef.current = true;
+          return true;
+        }
+        // RPC not available yet — fall back to direct table query
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single();
-
         if (!error && data) {
           setProfile(data as Profile);
           profileLoadedRef.current = true;
@@ -81,7 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // App just loaded — bootstrap profile from existing session
           clearTimeout(timeout);
           if (session?.user) {
-            await fetchProfile(session.user.id);
+            const ok = await fetchProfile(session.user.id);
+            // If DB fetch fails (e.g. RLS 500) use session data so the app
+            // still loads instead of permanently showing the error screen.
+            if (!ok && mounted) {
+              setProfile(buildFallbackProfile(session.user));
+              profileLoadedRef.current = true;
+            }
           }
           if (mounted) setLoading(false);
           return;
@@ -94,7 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profileLoadedRef.current) return;
           // Fresh login — fetch profile.
           setLoading(true);
-          await fetchProfile(session.user.id);
+          const ok = await fetchProfile(session.user.id);
+          if (!ok && mounted) {
+            setProfile(buildFallbackProfile(session.user));
+            profileLoadedRef.current = true;
+          }
           if (mounted) setLoading(false);
           return;
         }
