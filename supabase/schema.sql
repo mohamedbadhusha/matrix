@@ -1,6 +1,22 @@
 -- ============================================================
--- Matrix Pro v2 — Supabase Schema
--- Run this in Supabase SQL Editor (Database > SQL Editor)
+-- Matrix Pro v2 — Master Database Schema
+-- Single source of truth. Run ONCE in Supabase SQL Editor.
+-- (Database → SQL Editor → paste this entire file → Run)
+--
+-- Covers:
+--   • Extensions
+--   • All 19 tables (profiles, broker_accounts, trade_nodes,
+--     dhan_orders, dhan_trades, dhan_super_orders,
+--     dhan_forever_orders, dhan_positions, dhan_holdings,
+--     dhan_conditional_triggers, dhan_pnl_exit_config,
+--     dhan_ledger, dhan_trade_history, dhan_postback_logs,
+--     copy_subscriptions, order_logs, trade_events,
+--     subscriptions, system_flags, broker_health)
+--   • All triggers & helper functions
+--   • current_user_role() SECURITY DEFINER (no RLS recursion)
+--   • Full RLS policies (DROP IF EXISTS + CREATE)
+--   • Realtime publications
+--   • Default seed rows
 -- ============================================================
 
 -- Extensions
@@ -78,6 +94,11 @@ CREATE TABLE IF NOT EXISTS public.broker_accounts (
   last_checked_at TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Index for worker token-renewal query (find accounts expiring soon)
+CREATE INDEX IF NOT EXISTS broker_accounts_expires_idx
+  ON public.broker_accounts(token_expires_at)
+  WHERE is_active = true AND auth_method != 'manual';
 
 -- ============================================================
 -- TRADE NODES
