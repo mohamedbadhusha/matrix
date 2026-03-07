@@ -15,6 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
+  const dhanBase = getDhanBase(broker);
 
   try {
     const dhanRes = await fetch(`${dhanBase}/alerts/orders/${alertId}`, {
