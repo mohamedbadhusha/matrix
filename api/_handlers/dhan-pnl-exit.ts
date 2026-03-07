@@ -26,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const headers = dhanHeaders(broker);
+  const dhanBase = getDhanBase(broker);
 
   try {
     if (req.method === 'GET') {
