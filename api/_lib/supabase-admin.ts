@@ -56,22 +56,24 @@ export interface BrokerRow {
   health_status: string | null;
 }
 
-/** Standard Dhan request headers — accepts any object with the needed fields */
-export function dhanHeaders(broker: { access_token: string | null; api_key: string; client_id: string }): Record<string, string> {
+/** Standard Dhan request headers — accepts any broker object */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function dhanHeaders(broker: any): Record<string, string> {
   return {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'access-token': broker.access_token ?? broker.api_key,
-    'client-id': broker.client_id,
+    'access-token': broker?.access_token ?? broker?.api_key,
+    'client-id': broker?.client_id,
   };
 }
 
 export const DHAN_LIVE    = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
 export const DHAN_SANDBOX = 'https://sandbox.dhan.co/v2';
 
-/** Returns the correct Dhan base URL — accepts any object that has a mode field */
-export function getDhanBase(broker: { mode: string | null | undefined }): string {
-  return broker.mode === 'PAPER' ? DHAN_SANDBOX : DHAN_LIVE;
+/** Returns the correct Dhan base URL — accepts any broker object */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getDhanBase(broker: any): string {
+  return broker?.mode === 'PAPER' ? DHAN_SANDBOX : DHAN_LIVE;
 }
 
 /** @deprecated Use getDhanBase(broker) to respect PAPER/LIVE mode */
