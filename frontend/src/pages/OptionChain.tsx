@@ -8,7 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { BrokerAccount, OptionChainOC, OptionLeg } from '@/types';
-import { RefreshCw, ChevronDown, Layers, Clock, BarChart2 } from 'lucide-react';
+import { RefreshCw, ChevronDown, Layers, Clock, BarChart2, AlertTriangle, KeyRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // ── Well-known underlyings ───────────────────────────────────────────────────
 const UNDERLYINGS = [
@@ -130,6 +131,7 @@ export default function OptionChain() {
   const [chainData, setChainData]           = useState<{ last_price: number; oc: OptionChainOC } | null>(null);
   const [loading, setLoading]               = useState(false);
   const [lastFetched, setLastFetched]       = useState<Date | null>(null);
+  const [apiError, setApiError]             = useState<{ status: number; message: string } | null>(null);
 
   // UI options
   const [showGreeks, setShowGreeks]         = useState(false);
@@ -159,6 +161,7 @@ export default function OptionChain() {
   const fetchExpiries = useCallback(async () => {
     if (!selectedBroker || !activeScrip) return;
     setExpiryLoading(true);
+    setApiError(null);
     try {
       const res  = await fetch('/api/dhan-option-chain-expiry', {
         method: 'POST',
@@ -166,7 +169,17 @@ export default function OptionChain() {
         body: JSON.stringify({ brokerId: selectedBroker, UnderlyingScrip: activeScrip, UnderlyingSeg: activeSeg }),
       });
       const data = await res.json() as { data?: string[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      if (!res.ok) {
+        const msg = res.status === 401
+          ? 'Dhan access token expired — please renew it in Broker settings'
+          : res.status === 404
+          ? (data.error ?? 'Broker not found or expiry list unavailable for this underlying')
+          : (data.error ?? `Request failed (${res.status})`);
+        setApiError({ status: res.status, message: msg });
+        toast.error(msg);
+        setExpiryLoading(false);
+        return;
+      }
       const list = data.data ?? [];
       setExpiries(list);
       setSelectedExpiry(list[0] ?? '');
@@ -194,7 +207,18 @@ export default function OptionChain() {
         body: JSON.stringify({ brokerId: selectedBroker, UnderlyingScrip: activeScrip, UnderlyingSeg: activeSeg, Expiry: selectedExpiry }),
       });
       const data = await res.json() as { data?: { last_price: number; oc: OptionChainOC }; status?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      if (!res.ok) {
+        const msg = res.status === 401
+          ? 'Dhan access token expired — please renew it in Broker settings'
+          : res.status === 404
+          ? (data.error ?? 'Broker not found or option chain unavailable')
+          : (data.error ?? `Request failed (${res.status})`);
+        setApiError({ status: res.status, message: msg });
+        toast.error(msg);
+        setLoading(false);
+        return;
+      }
+      setApiError(null);
       if (data.data) { setChainData(data.data); setLastFetched(new Date()); }
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Option chain fetch failed'); }
     setLoading(false);
@@ -339,6 +363,29 @@ export default function OptionChain() {
           </button>
         </div>
       </div>
+
+      {/* API error banner */}
+      {apiError && (
+        <div className={cn(
+          'flex items-start gap-3 rounded-xl border px-4 py-3 text-sm',
+          apiError.status === 401
+            ? 'bg-loss/10 border-loss/30 text-loss'
+            : 'bg-warning/10 border-warning/30 text-warning',
+        )}>
+          {apiError.status === 401 ? <KeyRound size={16} className="mt-0.5 shrink-0" /> : <AlertTriangle size={16} className="mt-0.5 shrink-0" />}
+          <div className="flex-1">
+            <p className="font-medium">{apiError.message}</p>
+            {apiError.status === 401 && (
+              <p className="text-xs mt-1 opacity-80">
+                Go to{' '}
+                <Link to="/broker" className="underline font-semibold">Broker settings</Link>
+                {' '}→ click <strong>Renew</strong> next to your Dhan account, or update your access token manually.
+              </p>
+            )}
+          </div>
+          <button onClick={() => setApiError(null)} className="text-xs opacity-60 hover:opacity-100 ml-2">✕</button>
+        </div>
+      )}
 
       {/* Summary strip */}
       {chainData && (
