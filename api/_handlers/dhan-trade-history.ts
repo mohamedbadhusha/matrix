@@ -13,11 +13,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: broker, error } = await supabase
     .from('broker_accounts')
-    .select('access_token, api_key, client_id, user_id')
+    .select('id, access_token, api_key, client_id, mode, user_id, health_status')
     .eq('id', brokerId)
     .single();
 
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
+  const dhanBase = getDhanBase(broker as import('../_lib/supabase-admin.js').BrokerRow);
 
   try {
     const url = `${dhanBase}/trades/${fromDate}/${toDate}/${page}`;
