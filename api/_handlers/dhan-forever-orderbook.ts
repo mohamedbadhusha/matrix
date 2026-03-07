@@ -55,6 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!dhanRes.ok) {
+      // Dhan returns 404 when no forever orders exist — treat as empty
+      if (dhanRes.status === 404) return res.status(200).json([]);
       const err = await dhanRes.json() as { errorMessage?: string };
       return res.status(dhanRes.status).json({ error: err.errorMessage ?? 'Dhan API error' });
     }

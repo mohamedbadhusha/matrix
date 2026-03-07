@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTrades } from '@/app/providers/TradeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import TradeCard from '@/components/TradeCard';
@@ -15,6 +16,7 @@ import {
   Activity,
   ArrowRight,
   Plus,
+  ShieldOff,
 } from 'lucide-react';
 import { DAILY_TRADE_LIMITS } from '@/lib/constants';
 
@@ -92,13 +94,22 @@ export default function Dashboard() {
             })}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/deploy')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={16} />
-          Deploy Trade
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/trader-control"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-loss/30 bg-loss/5 text-loss hover:bg-loss/15 transition-all"
+            title="Kill Switch & P&L Exit controls"
+          >
+            <ShieldOff size={12} /> Kill Switch
+          </Link>
+          <button
+            onClick={() => navigate('/deploy')}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Deploy Trade
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}

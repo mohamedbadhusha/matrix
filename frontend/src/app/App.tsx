@@ -22,6 +22,7 @@ import Statement from '@/pages/Statement';
 import LiveOrders from '@/pages/LiveOrders';
 import OptionChain from '@/pages/OptionChain';
 import Simulator from '@/pages/Simulator';
+import Profile from '@/pages/Profile';
 
 // Admin Pages
 import AdminLayout from '@/pages/admin/AdminLayout';
@@ -139,6 +140,7 @@ function AppRoutes() {
         <Route path="option-chain"     element={<OptionChain />} />
         <Route path="simulator"           element={<Simulator />} />
         <Route path="broker" element={<BrokerPage />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="copy-trading" element={<CopyTrading />} />
         <Route path="subscription" element={<Subscription />} />
 

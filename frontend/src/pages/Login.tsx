@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { Eye, EyeOff, TrendingUp, Shield, Zap } from 'lucide-react';
+import { Eye, EyeOff, TrendingUp, Shield, Zap, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'signin' | 'signup';
+type Tab = 'signin' | 'signup' | 'forgot';
 
 export default function Login() {
   const { signIn, signUp } = useAuth();
@@ -13,6 +14,8 @@ export default function Login() {
   const [tab, setTab] = useState<Tab>('signin');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
   const [form, setForm] = useState({
     email: '',
@@ -54,6 +57,21 @@ export default function Login() {
     } else {
       toast.success('Account created! Check your email to confirm.');
       setTab('signin');
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) { toast.error('Enter your email'); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setResetSent(true);
     }
   };
 
@@ -123,22 +141,24 @@ export default function Login() {
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-panel-mid rounded-xl p-1 mb-6 border border-border">
-            {(['signin', 'signup'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={cn(
-                  'flex-1 py-2 text-sm font-medium rounded-lg transition-all',
-                  tab === t
-                    ? 'bg-accent-cyan text-navy shadow-sm'
-                    : 'text-muted hover:text-foreground',
-                )}
-              >
-                {t === 'signin' ? 'Sign In' : 'Sign Up'}
-              </button>
-            ))}
-          </div>
+          {tab !== 'forgot' && (
+            <div className="flex bg-panel-mid rounded-xl p-1 mb-6 border border-border">
+              {(['signin', 'signup'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    'flex-1 py-2 text-sm font-medium rounded-lg transition-all',
+                    tab === t
+                      ? 'bg-accent-cyan text-navy shadow-sm'
+                      : 'text-muted hover:text-foreground',
+                  )}
+                >
+                  {t === 'signin' ? 'Sign In' : 'Sign Up'}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Sign In Form */}
           {tab === 'signin' && (
@@ -183,7 +203,50 @@ export default function Login() {
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
+              <div className="text-center">
+                <button type="button" onClick={() => { setTab('forgot'); setResetSent(false); setResetEmail(form.email); }}
+                  className="text-xs text-muted hover:text-accent-cyan transition-colors">
+                  Forgot password?
+                </button>
+              </div>
             </form>
+          )}
+
+          {/* Forgot Password Form */}
+          {tab === 'forgot' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-accent-cyan/10 border border-accent-cyan/20 flex items-center justify-center mx-auto mb-3">
+                  <Mail size={20} className="text-accent-cyan" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Reset Password</h3>
+                <p className="text-xs text-muted mt-1">We'll email you a reset link</p>
+              </div>
+              {resetSent ? (
+                <div className="rounded-xl bg-profit/10 border border-profit/30 p-4 text-center space-y-2">
+                  <p className="text-xs font-semibold text-profit">Email sent!</p>
+                  <p className="text-xs text-muted">Check your inbox for the reset link. It may take a minute.</p>
+                  <button onClick={() => setTab('signin')} className="text-xs text-accent-cyan hover:underline mt-2">Back to Sign In</button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5">Email</label>
+                    <input type="email" required autoComplete="email" className="input-base"
+                      placeholder="you@example.com" value={resetEmail}
+                      onChange={e => setResetEmail(e.target.value)} />
+                  </div>
+                  <button type="submit" disabled={loading} className="btn-primary w-full">
+                    {loading ? 'Sending…' : 'Send Reset Link'}
+                  </button>
+                  <div className="text-center">
+                    <button type="button" onClick={() => setTab('signin')} className="text-xs text-muted hover:text-foreground">
+                      ← Back to Sign In
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           {/* Sign Up Form */}

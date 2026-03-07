@@ -24,6 +24,7 @@ import {
   Radio,
   Layers,
   FlaskConical,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -44,6 +45,7 @@ const memberNav = [
   { to: '/option-chain',   label: 'Option Chain',     icon: Layers },
   { to: '/simulator',        label: 'Simulator',         icon: FlaskConical },
   { to: '/broker',           label: 'Broker',           icon: Wifi },
+  { to: '/profile',          label: 'Profile',           icon: UserCircle },
   { to: '/copy-trading', label: 'Copy Trading',  icon: Copy },
   { to: '/subscription', label: 'Subscription',  icon: CreditCard },
 ];
@@ -155,7 +157,7 @@ export default function Sidebar() {
             </div>
             <button
               onClick={handleSignOut}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-loss"
+              className="opacity-60 hover:opacity-100 transition-opacity text-muted hover:text-loss"
               title="Sign out"
             >
               <LogOut size={14} />

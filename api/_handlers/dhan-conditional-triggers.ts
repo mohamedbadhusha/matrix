@@ -36,7 +36,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const data = await dhanRes.json() as unknown;
-    if (!dhanRes.ok) return res.status(dhanRes.status).json({ error: (data as { errorMessage?: string }).errorMessage ?? 'Fetch conditional triggers failed' });
+    if (!dhanRes.ok) {
+      // Dhan returns 404 when no conditional triggers exist — treat as empty
+      if (dhanRes.status === 404) return res.status(200).json([]);
+      return res.status(dhanRes.status).json({ error: (data as { errorMessage?: string }).errorMessage ?? 'Fetch conditional triggers failed' });
+    }
 
     // Upsert into DB
     const rows = (Array.isArray(data) ? data : [data]) as Array<{
