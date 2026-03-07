@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: broker, error: bErr } = await supabase
     .from('broker_accounts')
-    .select('id, client_id, access_token, failure_count, token_expires_at')
+    .select('id, client_id, access_token, api_key, mode, user_id, health_status, failure_count, token_expires_at')
     .eq('id', brokerId as string)
     .single();
 
