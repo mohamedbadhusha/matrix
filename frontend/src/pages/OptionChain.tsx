@@ -145,7 +145,7 @@ export default function OptionChain() {
     if (!profile) return;
     supabase
       .from('broker_accounts')
-      .select('id, broker, client_id, is_active')
+      .select('id, broker, client_id, is_active, mode')
       .eq('user_id', profile.id)
       .eq('is_active', true)
       .then(({ data }) => {
@@ -383,8 +383,18 @@ export default function OptionChain() {
       ) : !chainData ? (
         <div className="panel p-16 text-center">
           <Layers size={36} className="mx-auto mb-3 text-muted opacity-20" />
-          <p className="text-sm text-muted">Select an underlying + expiry, then click Fetch</p>
-          <p className="text-xs text-muted/60 mt-1">Option chain rates are limited to 1 request per 3 seconds by Dhan</p>
+          {brokers.length === 0 ? (
+            <>
+              <p className="text-sm text-loss font-semibold">No broker connected</p>
+              <p className="text-xs text-muted/70 mt-1">Option Chain requires a Dhan broker account. Add one in <a href="/broker" className="text-accent-cyan underline">Broker settings</a>.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted">Select an underlying + expiry, then click Fetch</p>
+              <p className="text-xs text-muted/60 mt-1">Option chain rates are limited to 1 request per 3 seconds by Dhan</p>
+              <p className="text-xs text-muted/40 mt-1">Note: Market data always uses the LIVE Dhan endpoint regardless of broker mode</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="panel overflow-hidden">

@@ -5,7 +5,7 @@
  * Pass-through: no DB storage (pure real-time data).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, DHAN_LIVE } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -30,7 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
-  const dhanBase = getDhanBase(broker);
+  // Always use LIVE endpoint for market data — sandbox does not serve real option chain
+  const dhanBase = DHAN_LIVE;
 
   try {
     const dhanRes = await fetch(`${dhanBase}/optionchain`, {
@@ -51,7 +52,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const data = await dhanRes.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await dhanRes.json() as any;
+    // Dhan v2 returns uppercase CE/PE keys — normalize to lowercase so the
+    // frontend types (ce/pe) match without any client-side gymnastics.
+    if (data?.data?.oc && typeof data.data.oc === 'object') {
+      for (const strike of Object.values(data.data.oc) as any[]) {
+        if (strike['CE'] !== undefined && strike['ce'] === undefined) {
+          strike['ce'] = strike['CE'];
+          delete strike['CE'];
+        }
+        if (strike['PE'] !== undefined && strike['pe'] === undefined) {
+          strike['pe'] = strike['PE'];
+          delete strike['PE'];
+        }
+      }
+    }
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal error' });
