@@ -23,6 +23,7 @@ import {
   FileText,
   Radio,
   Layers,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -41,6 +42,7 @@ const memberNav = [
   { to: '/statement',      label: 'Statement',        icon: FileText },
   { to: '/live-orders',    label: 'Live Orders',      icon: Radio },
   { to: '/option-chain',   label: 'Option Chain',     icon: Layers },
+  { to: '/simulator',        label: 'Simulator',         icon: FlaskConical },
   { to: '/broker',           label: 'Broker',           icon: Wifi },
   { to: '/copy-trading', label: 'Copy Trading',  icon: Copy },
   { to: '/subscription', label: 'Subscription',  icon: CreditCard },

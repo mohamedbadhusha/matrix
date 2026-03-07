@@ -21,6 +21,7 @@ import Funds from '@/pages/Funds';
 import Statement from '@/pages/Statement';
 import LiveOrders from '@/pages/LiveOrders';
 import OptionChain from '@/pages/OptionChain';
+import Simulator from '@/pages/Simulator';
 
 // Admin Pages
 import AdminLayout from '@/pages/admin/AdminLayout';
@@ -135,6 +136,7 @@ function AppRoutes() {
         <Route path="statement"       element={<Statement />} />
         <Route path="live-orders"     element={<LiveOrders />} />
         <Route path="option-chain"     element={<OptionChain />} />
+        <Route path="simulator"           element={<Simulator />} />
         <Route path="broker" element={<BrokerPage />} />
         <Route path="copy-trading" element={<CopyTrading />} />
         <Route path="subscription" element={<Subscription />} />
