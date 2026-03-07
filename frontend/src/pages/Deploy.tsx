@@ -14,7 +14,7 @@ import {
   canDeployTrade,
   cn,
 } from '@/lib/utils';
-import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS } from '@/lib/constants';
+import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META } from '@/lib/constants';
 import type { Protocol, TargetMode, TradeMode, ParsedSignal, DeployTradeInput } from '@/types';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronRight, Info } from 'lucide-react';
@@ -103,16 +103,18 @@ export default function Deploy() {
 
   const lotSize = getLotSize(form.symbol);
   const lots = parseInt(form.lots) || 1;
-  const { qtyPerBucket, buckets } = computeBuckets(lots, form.protocol, lotSize);
+  const { qtyPerBucket, buckets, lotsPerBucket, totalQty } = computeBuckets(lots, form.protocol, lotSize);
+  const totalLots = lotsPerBucket * buckets; // actual lots deployed (may differ from input if lots < buckets)
   const numEntry = Number(form.entryPrice);
   const numSl = Number(form.sl);
   const numT3 = Number(form.t3);
 
+  // Use actual deployed qty (totalQty) — not raw lots×lotSize which ignores min-per-bucket clamp
   const maxLoss = numEntry > 0 && numSl > 0
-    ? (numEntry - numSl) * lots * lotSize
+    ? (numEntry - numSl) * totalQty
     : 0;
   const maxGain = numEntry > 0 && numT3 > 0
-    ? (numT3 - numEntry) * lots * lotSize
+    ? (numT3 - numEntry) * totalQty
     : 0;
 
   const handleDeploy = async () => {
@@ -453,14 +455,28 @@ export default function Deploy() {
       {numEntry > 0 && numSl > 0 && (
         <div className="panel p-5 space-y-3 animate-fade-in">
           <h3 className="text-sm font-semibold text-foreground">Trade Review</h3>
+          {/* Minimum lots warning */}
+          {lots < buckets && (
+            <div className="flex items-start gap-2 bg-warning/5 border border-warning/20 rounded-lg px-3 py-2">
+              <AlertTriangle size={13} className="text-warning flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-warning/90">
+                <strong>{PROTOCOL_META[form.protocol].label}</strong> needs min {buckets} lots (1 per bucket).
+                Your input of {lots} lot{lots > 1 ? 's' : ''} will be rounded up — <strong>{totalLots} lots total</strong> will actually be deployed.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-xs text-muted">Total Quantity</p>
-              <p className="price font-bold">{lots * lotSize} units ({lots} lots × {lotSize})</p>
+              <p className="text-xs text-muted">Total Deployed</p>
+              <p className="price font-bold">{totalQty} units</p>
+              <p className="text-[10px] text-muted font-mono mt-0.5">
+                {lotsPerBucket} lot/bucket × {buckets} buckets = {totalLots} lots
+              </p>
             </div>
             <div>
-              <p className="text-xs text-muted">Qty per Bucket</p>
-              <p className="price font-bold">{qtyPerBucket} units ({buckets} buckets)</p>
+              <p className="text-xs text-muted">Per Bucket</p>
+              <p className="price font-bold">{qtyPerBucket} units ({lotsPerBucket} lot{lotsPerBucket > 1 ? 's' : ''})</p>
+              <p className="text-[10px] text-muted font-mono mt-0.5">{buckets} bucket{buckets > 1 ? 's' : ''} total</p>
             </div>
             <div>
               <p className="text-xs text-muted">Max Loss (SL hit)</p>
