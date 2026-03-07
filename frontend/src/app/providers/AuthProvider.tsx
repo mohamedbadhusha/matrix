@@ -106,18 +106,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (event === 'INITIAL_SESSION') {
-          // App just loaded — bootstrap profile from existing session
+          // Unblock the UI immediately — INITIAL_SESSION reads from localStorage
+          // so this fires in <50ms. Profile is fetched in the background.
           clearTimeout(timeout);
-          if (session?.user) {
-            const ok = await fetchProfile(session.user.id);
-            // If DB fetch fails (e.g. RLS 500) use session data so the app
-            // still loads instead of permanently showing the error screen.
-            if (!ok && mounted) {
-              setProfile(buildFallbackProfile(session.user));
-              profileLoadedRef.current = true;
-            }
-          }
           if (mounted) setLoading(false);
+          if (session?.user) {
+            const sessionUser = session.user;
+            fetchProfile(sessionUser.id).then(ok => {
+              if (!ok && mounted) {
+                setProfile(buildFallbackProfile(sessionUser));
+                profileLoadedRef.current = true;
+              }
+            });
+          }
           return;
         }
 

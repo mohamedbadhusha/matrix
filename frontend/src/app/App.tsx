@@ -51,11 +51,12 @@ function ProtectedRoute({
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requireSuperAdmin && profile?.role !== 'super_admin') {
+  // Only enforce role checks once profile has loaded (not while null)
+  if (profile && requireSuperAdmin && profile.role !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireAdmin && !['admin', 'super_admin'].includes(profile?.role ?? '')) {
+  if (profile && requireAdmin && !['admin', 'super_admin'].includes(profile.role)) {
     return <Navigate to="/dashboard" replace />;
   }
 
