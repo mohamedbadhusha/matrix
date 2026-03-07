@@ -4,7 +4,7 @@
  *   ?brokerId=xxx&alertId=yyy → fetch single
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase, getDhanBase } from '../_lib/supabase-admin.js';
+import { supabaseAdmin as supabase, getDhanBase, type BrokerRow } from '../_lib/supabase-admin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -15,11 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: broker, error } = await supabase
     .from('broker_accounts')
-    .select('access_token, api_key, client_id, user_id')
+    .select('id, client_id, access_token, api_key, mode, user_id, health_status')
     .eq('id', brokerId)
     .single();
 
   if (error || !broker) return res.status(404).json({ error: 'Broker not found' });
+  const dhanBase = getDhanBase(broker as BrokerRow);
 
   const endpoint = alertId
     ? `${dhanBase}/alerts/orders/${alertId}`
