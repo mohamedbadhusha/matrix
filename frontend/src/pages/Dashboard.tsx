@@ -48,7 +48,7 @@ function StatCard({
 }
 
 export default function Dashboard() {
-  const { activeTrades, allTrades, loadingTrades } = useTrades();
+  const { activeTrades, allTrades, loadingTrades, deleteTrade } = useTrades();
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -146,7 +146,7 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {activeTrades.map((trade) => (
-              <TradeCard key={trade.id} trade={trade} />
+              <TradeCard key={trade.id} trade={trade} onDelete={deleteTrade} />
             ))}
           </div>
         </div>

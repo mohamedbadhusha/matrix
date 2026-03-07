@@ -7,11 +7,13 @@ import {
   cn,
 } from '@/lib/utils';
 import { PROTOCOL_META } from '@/lib/constants';
-import { TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { TrendingUp, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface TradeCardProps {
   trade: TradeNode;
   onClick?: () => void;
+  onDelete?: (id: string) => void;
 }
 
 function BucketDots({ total, remaining }: { total: number; remaining: number }) {
@@ -81,12 +83,13 @@ function PriceBar({ trade }: { trade: TradeNode }) {
   );
 }
 
-export default function TradeCard({ trade, onClick }: TradeCardProps) {
+export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) {
   const meta = PROTOCOL_META[trade.protocol as Protocol];
   const ltp = trade.ltp ?? trade.entry_price;
   const unrealizedPnl = (ltp - trade.entry_price) * trade.remaining_quantity;
   const totalPnl = trade.booked_pnl + unrealizedPnl;
   const isActive = trade.status === 'ACTIVE';
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const glowClass = isActive ? meta.glowClass : 'glow-red';
 
@@ -218,11 +221,42 @@ export default function TradeCard({ trade, onClick }: TradeCardProps) {
       </div>
 
       {/* Time */}
-      <div className="flex items-center gap-1 mt-2">
-        <Clock size={10} className="text-muted/50" />
-        <span className="text-[10px] text-muted/50">{relativeTime(trade.created_at)}</span>
-        {trade.closed_at && (
-          <span className="text-[10px] text-muted/50"> · closed {relativeTime(trade.closed_at)}</span>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-1">
+          <Clock size={10} className="text-muted/50" />
+          <span className="text-[10px] text-muted/50">{relativeTime(trade.created_at)}</span>
+          {trade.closed_at && (
+            <span className="text-[10px] text-muted/50"> · closed {relativeTime(trade.closed_at)}</span>
+          )}
+        </div>
+        {onDelete && (
+          <div className="flex items-center gap-1.5">
+            {confirmDelete ? (
+              <>
+                <span className="text-[10px] text-loss">Delete?</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(trade.id); }}
+                  className="text-[10px] px-2 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                  className="text-[10px] px-2 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
+                >
+                  No
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
+                title="Delete trade"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -234,16 +268,19 @@ export function TradeCardCompact({
   trade,
   onExpand,
   expanded,
+  onDelete,
 }: {
   trade: TradeNode;
   onExpand?: (id: string) => void;
   expanded?: boolean;
+  onDelete?: (id: string) => void;
 }) {
   const meta = PROTOCOL_META[trade.protocol as Protocol];
   const ltp = trade.ltp ?? trade.entry_price;
   const pnl = trade.realised_pnl !== null && trade.realised_pnl !== undefined
     ? trade.realised_pnl
     : (ltp - trade.entry_price) * trade.remaining_quantity;
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <tr className="border-b border-border/50 hover:bg-panel-mid/50 transition-colors">
@@ -298,16 +335,44 @@ export function TradeCardCompact({
       <td className="py-3 px-4 text-xs text-muted">
         {relativeTime(trade.created_at)}
       </td>
-      {/* Expand */}
+      {/* Expand + Delete */}
       <td className="py-3 px-4">
-        {onExpand && (
-          <button
-            onClick={() => onExpand(trade.id)}
-            className="text-muted hover:text-foreground transition-colors text-xs"
-          >
-            {expanded ? '▲' : '▼'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onExpand && (
+            <button
+              onClick={() => onExpand(trade.id)}
+              className="text-muted hover:text-foreground transition-colors text-xs"
+            >
+              {expanded ? '▲' : '▼'}
+            </button>
+          )}
+          {onDelete && (
+            confirmDelete ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onDelete(trade.id)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
+                >
+                  Del
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
+                title="Delete"
+              >
+                <Trash2 size={12} />
+              </button>
+            )
+          )}
+        </div>
       </td>
     </tr>
   );

@@ -15,6 +15,7 @@ interface TradeContextValue {
   allTrades: TradeNode[];
   loadingTrades: boolean;
   refetchTrades: () => Promise<void>;
+  deleteTrade: (id: string) => Promise<void>;
 }
 
 const TradeContext = createContext<TradeContextValue | undefined>(undefined);
@@ -46,6 +47,12 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const refetchTrades = fetchTrades;
+
+  const deleteTrade = useCallback(async (id: string) => {
+    await supabase.from('trade_nodes').delete().eq('id', id);
+    setAllTrades((prev) => prev.filter((t) => t.id !== id));
+    setActiveTrades((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   // Initial fetch
   useEffect(() => {
@@ -102,7 +109,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   return (
-    <TradeContext.Provider value={{ activeTrades, allTrades, loadingTrades, refetchTrades }}>
+    <TradeContext.Provider value={{ activeTrades, allTrades, loadingTrades, refetchTrades, deleteTrade }}>
       {children}
     </TradeContext.Provider>
   );
