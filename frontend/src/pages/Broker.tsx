@@ -99,6 +99,9 @@ export default function Broker() {
   const [testing, setTesting] = useState<string | null>(null);
   const [renewing, setRenewing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editingTokenId, setEditingTokenId] = useState<string | null>(null);
+  const [newToken, setNewToken] = useState('');
+  const [updatingToken, setUpdatingToken] = useState(false);
 
   const [manualForm, setManualForm] = useState<ManualForm>({ clientId: '', accessToken: '', mode: 'LIVE' });
   const [oauthForm, setOAuthForm] = useState<OAuthForm>({ clientId: '', appId: '', appSecret: '', mode: 'LIVE' });
@@ -157,12 +160,14 @@ export default function Broker() {
       return;
     }
     setSaving(true);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const { error } = await supabase.from('broker_accounts').insert({
       user_id: profile!.id,
       broker: 'DHAN',
       client_id: manualForm.clientId.trim(),
       api_key: '',
       access_token: manualForm.accessToken.trim(),
+      token_expires_at: expiresAt,
       auth_method: 'manual',
       is_active: true,
       mode: manualForm.mode,
@@ -171,9 +176,29 @@ export default function Broker() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Broker account added');
+      toast.success('Broker account added — token valid for 24h');
       setManualForm({ clientId: '', accessToken: '', mode: 'LIVE' });
       setShowForm(false);
+      fetchAccounts();
+    }
+  };
+
+  // ─── Update token (manual accounts) ────────────────────────────────────────
+  const handleUpdateToken = async (accountId: string) => {
+    if (!newToken.trim()) { toast.error('Paste the new access token'); return; }
+    setUpdatingToken(true);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase
+      .from('broker_accounts')
+      .update({ access_token: newToken.trim(), token_expires_at: expiresAt, health_status: 'UNKNOWN', failure_count: 0 })
+      .eq('id', accountId);
+    setUpdatingToken(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Token updated — valid for 24h');
+      setEditingTokenId(null);
+      setNewToken('');
       fetchAccounts();
     }
   };
@@ -631,6 +656,15 @@ export default function Broker() {
                       Renew
                     </button>
                   )}
+                  {account.auth_method === 'manual' && (
+                    <button
+                      onClick={() => { setEditingTokenId(editingTokenId === account.id ? null : account.id); setNewToken(''); }}
+                      className="text-xs flex items-center gap-1 text-warning border border-warning/30 bg-warning/5 hover:bg-warning/10 px-3 py-1.5 rounded-lg transition-all"
+                    >
+                      <KeyRound size={12} />
+                      Update Token
+                    </button>
+                  )}
                   <button
                     onClick={() => handleTest(account)}
                     disabled={testing === account.id}
@@ -663,7 +697,38 @@ export default function Broker() {
                   </p>
                 )}
               </div>
-            </div>
+              {/* Inline token update form */}
+              {editingTokenId === account.id && (
+                <div className="mt-3 pt-3 border-t border-warning/20 space-y-2 animate-slide-up">
+                  <p className="text-xs text-warning font-medium flex items-center gap-1.5">
+                    <KeyRound size={11} /> Paste new access token from dhanhq.co → My Profile → Access Token
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      className="input-base font-mono flex-1 text-xs"
+                      placeholder="eyJ0eXAiOiJKV1Qi..."
+                      value={newToken}
+                      onChange={e => setNewToken(e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleUpdateToken(account.id)}
+                      disabled={updatingToken || !newToken.trim()}
+                      className="btn-primary text-xs px-4 flex items-center gap-1.5"
+                    >
+                      <RefreshCw size={12} className={updatingToken ? 'animate-spin' : ''} />
+                      {updatingToken ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => { setEditingTokenId(null); setNewToken(''); }}
+                      className="btn-secondary text-xs px-3"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}            </div>
           ))}
         </div>
       )}
