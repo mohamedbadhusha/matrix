@@ -7,12 +7,14 @@ interface ProtocolSelectorProps {
   value: Protocol;
   onChange: (p: Protocol) => void;
   tier: UserTier;
+  /** Override allowed protocols list (e.g. while profile is loading) */
+  allowedOverride?: Protocol[];
 }
 
 const protocols: Protocol[] = ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'];
 
-export default function ProtocolSelector({ value, onChange, tier }: ProtocolSelectorProps) {
-  const allowed = TIER_FEATURES[tier].protocols;
+export default function ProtocolSelector({ value, onChange, tier, allowedOverride }: ProtocolSelectorProps) {
+  const allowed = allowedOverride ?? TIER_FEATURES[tier].protocols;
 
   return (
     <div className="grid grid-cols-2 gap-3">

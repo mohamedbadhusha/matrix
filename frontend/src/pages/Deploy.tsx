@@ -51,7 +51,9 @@ export default function Deploy() {
   const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
 
   const tier = profile?.tier ?? 'free';
-  const allowedProtocols = TIER_FEATURES[tier].protocols;
+  const allowedProtocols = profile
+    ? TIER_FEATURES[profile.tier].protocols
+    : (['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'] as Protocol[]);
   const canManualTargets = TIER_FEATURES[tier].manualTargets;
   const dailyLimit = DAILY_TRADE_LIMITS[tier];
   const tradesUsed = profile?.daily_trades_used ?? 0;
@@ -231,6 +233,23 @@ export default function Deploy() {
         </div>
       )}
 
+      {/* Protocol selector — first so user picks BEFORE pasting signal */}
+      <div className="panel p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Exit Protocol</h3>
+        <ProtocolSelector
+          value={form.protocol}
+          onChange={(p) => {
+            if (profile && !allowedProtocols.includes(p)) {
+              toast.error(`${p} requires Pro or Elite tier`);
+              return;
+            }
+            setForm((f) => ({ ...f, protocol: p }));
+          }}
+          tier={tier}
+          allowedOverride={allowedProtocols}
+        />
+      </div>
+
       {/* Tabs */}
       <div className="flex bg-panel-mid rounded-xl p-1 border border-border">
         {(['signal', 'manual'] as Tab[]).map((t) => (
@@ -254,22 +273,6 @@ export default function Deploy() {
           <SignalParserInput onParsed={handleParsed} />
         </div>
       )}
-
-      {/* Protocol selector (always visible) */}
-      <div className="panel p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Exit Protocol</h3>
-        <ProtocolSelector
-          value={form.protocol}
-          onChange={(p) => {
-            if (!allowedProtocols.includes(p)) {
-              toast.error(`${p} requires Pro or Elite tier`);
-              return;
-            }
-            setForm((f) => ({ ...f, protocol: p }));
-          }}
-          tier={tier}
-        />
-      </div>
 
       {/* Trade parameters */}
       <div className="panel p-5 space-y-4">
