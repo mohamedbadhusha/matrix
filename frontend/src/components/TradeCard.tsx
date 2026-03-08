@@ -137,22 +137,24 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
 
         {/* Status */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {isActive && (
+          {isActive ? (
             <>
               <span className={trade.mode === 'LIVE' ? 'dot-live' : 'dot-paper'} />
               <span className="text-[10px] text-muted">
-                {trade.ltp_source === 'BROKER' ? 'LIVE' : 'SIM'}
+                {trade.mode === 'LIVE' ? 'LIVE' : 'SIM'}
               </span>
             </>
-          )}
-          {trade.status === 'CLOSED' && (
-            <span className="text-[10px] text-muted">CLOSED</span>
-          )}
-          {trade.status === 'KILLED' && (
-            <span className="flex items-center gap-1 text-[10px] text-loss">
+          ) : trade.status === 'CLOSED' ? (
+            <span className="badge text-[10px] bg-muted/10 text-muted border-muted/30">CLOSED</span>
+          ) : trade.status === 'SL_HIT' ? (
+            <span className="flex items-center gap-1 badge text-[10px] bg-loss/10 text-loss border-loss/30">
+              <AlertCircle size={10} /> SL HIT
+            </span>
+          ) : trade.status === 'KILLED' ? (
+            <span className="flex items-center gap-1 badge text-[10px] bg-loss/10 text-loss border-loss/30">
               <AlertCircle size={10} /> KILLED
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -229,7 +231,7 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
             <span className="text-[10px] text-muted/50"> · closed {relativeTime(trade.closed_at)}</span>
           )}
         </div>
-        {onDelete && (
+        {onDelete && isActive && (
           <div className="flex items-center gap-1.5">
             {confirmDelete ? (
               <>
@@ -251,7 +253,7 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                 className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
-                title="Delete trade"
+                title="Delete active trade"
               >
                 <Trash2 size={12} />
               </button>
@@ -346,7 +348,7 @@ export function TradeCardCompact({
               {expanded ? '▲' : '▼'}
             </button>
           )}
-          {onDelete && (
+          {onDelete && trade.status === 'ACTIVE' && (
             confirmDelete ? (
               <div className="flex items-center gap-1">
                 <button
@@ -366,7 +368,7 @@ export function TradeCardCompact({
               <button
                 onClick={() => setConfirmDelete(true)}
                 className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
-                title="Delete"
+                title="Delete active trade"
               >
                 <Trash2 size={12} />
               </button>

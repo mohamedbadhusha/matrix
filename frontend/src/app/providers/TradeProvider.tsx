@@ -49,10 +49,16 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const refetchTrades = fetchTrades;
 
   const deleteTrade = useCallback(async (id: string) => {
-    await supabase.from('trade_nodes').delete().eq('id', id);
+    // Optimistically remove from UI
     setAllTrades((prev) => prev.filter((t) => t.id !== id));
     setActiveTrades((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+    const { error } = await supabase.from('trade_nodes').delete().eq('id', id);
+    if (error) {
+      // Revert — re-fetch so the trade reappears
+      fetchTrades();
+      console.error('[deleteTrade] DB delete failed:', error.message);
+    }
+  }, [fetchTrades]);
 
   // Initial fetch
   useEffect(() => {
