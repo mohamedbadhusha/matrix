@@ -231,7 +231,7 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
             <span className="text-[10px] text-muted/50"> · closed {relativeTime(trade.closed_at)}</span>
           )}
         </div>
-        {onDelete && isActive && (
+        {onDelete && (
           <div className="flex items-center gap-1.5">
             {confirmDelete ? (
               <>
@@ -348,7 +348,7 @@ export function TradeCardCompact({
               {expanded ? '▲' : '▼'}
             </button>
           )}
-          {onDelete && trade.status === 'ACTIVE' && (
+          {onDelete && (
             confirmDelete ? (
               <div className="flex items-center gap-1">
                 <button

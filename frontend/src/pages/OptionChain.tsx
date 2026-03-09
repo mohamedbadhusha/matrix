@@ -149,11 +149,11 @@ export default function OptionChain() {
       .from('broker_accounts')
       .select('id, broker, client_id, is_active, mode')
       .eq('user_id', profile.id)
-      .eq('is_active', true)
       .then(({ data }) => {
         const list = (data ?? []) as BrokerAccount[];
         setBrokers(list);
-        if (list.length > 0 && !selectedBroker) setSelectedBroker(list[0].id);
+        const preferred = list.find(b => b.is_active) ?? list[0];
+        if (preferred && !selectedBroker) setSelectedBroker(preferred.id);
       });
   }, [profile]);
 
@@ -280,8 +280,8 @@ export default function OptionChain() {
         {/* Broker */}
         <div className="relative">
           <select value={selectedBroker} onChange={e => setSelectedBroker(e.target.value)} className="input-base pr-8 text-sm min-w-[160px]">
-            {brokers.length === 0 && <option value="">No brokers</option>}
-            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker} · {b.client_id}</option>)}
+            {brokers.length === 0 && <option value="">No brokers connected</option>}
+            {brokers.map(b => <option key={b.id} value={b.id}>{b.broker} · {b.client_id}{!b.is_active ? ' (token expired)' : ''}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         </div>

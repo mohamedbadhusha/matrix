@@ -464,11 +464,11 @@ export default function Orders() {
       .from('broker_accounts')
       .select('*')
       .eq('user_id', profile.id)
-      .eq('is_active', true)
       .then(({ data }) => {
         const list = (data ?? []) as BrokerAccount[];
         setBrokers(list);
-        if (list.length > 0 && !selectedBroker) setSelectedBroker(list[0].id);
+        const preferred = list.find(b => b.is_active) ?? list[0];
+        if (preferred && !selectedBroker) setSelectedBroker(preferred.id);
       });
   }, [profile]);
 
@@ -590,10 +590,10 @@ export default function Orders() {
             value={selectedBroker}
             onChange={(e) => setSelectedBroker(e.target.value)}
           >
-            {brokers.length === 0 && <option value="">No active brokers</option>}
+            {brokers.length === 0 && <option value="">No brokers connected</option>}
             {brokers.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.broker} · {b.client_id} ({b.mode})
+                {b.broker} · {b.client_id} ({b.mode}){!b.is_active ? ' — token expired' : ''}
               </option>
             ))}
           </select>

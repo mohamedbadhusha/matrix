@@ -353,9 +353,17 @@ export default function Broker() {
   const handleDelete = async (id: string) => {
     if (!confirm('Remove this broker account?')) return;
     setDeleting(id);
-    await supabase.from('broker_accounts').delete().eq('id', id);
-    toast.success('Broker account removed');
-    fetchAccounts();
+    const { error } = await supabase
+      .from('broker_accounts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', profile!.id);
+    if (error) {
+      toast.error(error.message ?? 'Failed to remove account — it may have linked trades');
+    } else {
+      toast.success('Broker account removed');
+      fetchAccounts();
+    }
     setDeleting(null);
   };
 
