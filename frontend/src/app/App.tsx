@@ -52,6 +52,11 @@ function ProtectedRoute({
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
+  // Profile is still being fetched in the background (INITIAL_SESSION fast-path).
+  // Keep showing the spinner rather than the error screen — buildFallbackProfile
+  // runs when the fetch ultimately fails, so this never hangs indefinitely.
+  if (!profile) return <LoadingScreen />;
+
   // Only enforce role checks once profile has loaded (not while null)
   if (profile && requireSuperAdmin && profile.role !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
@@ -59,20 +64,6 @@ function ProtectedRoute({
 
   if (profile && requireAdmin && !['admin', 'super_admin'].includes(profile.role)) {
     return <Navigate to="/dashboard" replace />;
-  }
-
-  // Profile fetch failed (schema issue / RLS) — show retry rather than infinite loader
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-navy flex items-center justify-center">
-        <div className="panel p-8 text-center max-w-sm space-y-3">
-          <p className="text-muted text-sm">Could not load profile. Check your connection.</p>
-          <button className="btn-secondary text-xs" onClick={() => window.location.reload()}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
   }
 
   if (!profile.is_active) {
