@@ -5,7 +5,7 @@ import { TIER_FEATURES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { CopySubscription, Profile } from '@/types';
 import { toast } from 'sonner';
-import { Copy, Crown, Users, Lock } from 'lucide-react';
+import { Copy, Crown, Users, Lock, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CopyTrading() {
@@ -17,6 +17,7 @@ export default function CopyTrading() {
   const [multiplier, setMultiplier] = useState(1.0);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const tier = profile?.tier ?? 'free';
   const canCopy = TIER_FEATURES[tier].copyTrading;
@@ -27,28 +28,52 @@ export default function CopyTrading() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [leadersRes, subRes] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id, full_name, email, tier, role')
-        .in('role', ['admin', 'super_admin']),
-      supabase
-        .from('copy_subscriptions')
-        .select('*')
-        .eq('follower_id', profile!.id)
-        .maybeSingle(),
-    ]);
+    setDbError(null);
+    try {
+      const [leadersRes, subRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, email, tier, role')
+          .in('role', ['admin', 'super_admin']),
+        supabase
+          .from('copy_subscriptions')
+          .select('*')
+          .eq('follower_id', profile!.id)
+          .maybeSingle(),
+      ]);
 
-    setLeaders((leadersRes.data as Profile[]) ?? []);
-    const sub = subRes.data as CopySubscription | null;
-    setMySubscription(sub);
-    setMultiplier(sub?.lot_multiplier ?? 1.0);
-    setLoading(false);
+      if (subRes.error) {
+        // Table may not exist yet in the DB — show a setup warning
+        const msg = subRes.error.message ?? String(subRes.error);
+        if (msg.toLowerCase().includes('does not exist') || msg.toLowerCase().includes('relation')) {
+          setDbError('The copy_subscriptions table is missing from your database. Run the schema.sql in Supabase SQL Editor to create it.');
+        } else {
+          setDbError(msg);
+        }
+      }
+
+      setLeaders((leadersRes.data as Profile[]) ?? []);
+      const sub = subRes.data as CopySubscription | null;
+      setMySubscription(sub);
+      setMultiplier(sub?.lot_multiplier ?? 1.0);
+    } catch (err) {
+      // Network / CORS failure — table likely not created yet
+      setDbError(
+        'Could not load copy trading data. This usually means the copy_subscriptions table has not been created in your Supabase database yet. ' +
+        'Go to Supabase → SQL Editor and run the schema.sql file to fix it.',
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleToggle = async (leaderId: string) => {
     if (!canCopy) {
       toast.error('Copy trading requires Pro or Elite tier');
+      return;
+    }
+    if (dbError) {
+      toast.error('Fix the database setup error first before using copy trading');
       return;
     }
 
@@ -118,6 +143,20 @@ export default function CopyTrading() {
         <h1 className="text-2xl font-bold text-foreground">Copy Trading</h1>
         <p className="text-sm text-muted mt-0.5">Mirror trades from signal providers automatically</p>
       </div>
+
+      {/* DB setup error banner */}
+      {dbError && (
+        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">Database setup required</p>
+            <p className="text-xs mt-1 opacity-80">{dbError}</p>
+            <p className="text-xs mt-2 opacity-70">
+              Go to <strong>Supabase → SQL Editor</strong> and run the <code className="bg-warning/20 px-1 rounded">schema.sql</code> file from your project.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Current status banner */}
       <div className={cn(
