@@ -34,6 +34,8 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /** True when the DB profile fetch failed and a fallback (role:'member') was used. */
+  profileFetchFailed: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileFetchFailed, setProfileFetchFailed] = useState(false);
   // Tracks whether we have successfully loaded a profile in this session.
   // Prevents re-fetching (and the resulting "Could not load profile" flash)
   // when the browser fires a duplicate SIGNED_IN on tab focus / token refresh.
@@ -85,7 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user?.id) await fetchProfile(user.id);
+    if (user?.id) {
+      profileLoadedRef.current = false;
+      const ok = await fetchProfile(user.id);
+      if (ok) setProfileFetchFailed(false);
+    }
   }, [user?.id, fetchProfile]);
 
   useEffect(() => {
@@ -115,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchProfile(sessionUser.id).then(ok => {
               if (!ok && mounted) {
                 setProfile(buildFallbackProfile(sessionUser));
+                setProfileFetchFailed(true);
                 profileLoadedRef.current = true;
               }
             });
@@ -132,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const ok = await fetchProfile(session.user.id);
           if (!ok && mounted) {
             setProfile(buildFallbackProfile(session.user));
+            setProfileFetchFailed(true);
             profileLoadedRef.current = true;
           }
           if (mounted) setLoading(false);
@@ -140,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'SIGNED_OUT') {
           setProfile(null);
+          setProfileFetchFailed(false);
           profileLoadedRef.current = false;
           setLoading(false);
           return;
@@ -201,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, loading, signIn, signUp, signOut, refreshProfile }}
+      value={{ session, user, profile, loading, profileFetchFailed, signIn, signUp, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
