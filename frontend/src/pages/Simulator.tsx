@@ -90,9 +90,11 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
   }
 
   // ── HALF_AND_HALF ─────────────────────────────────────────────────────────
+  // T1 → Mark only + SL→entry, then trail SL = entry + gain from T1
+  // T2 → Exit 1 bucket + SL→T1
+  // T3 → Exit remaining 1 bucket
   if (t.protocol === 'HALF_AND_HALF') {
-    // Per-tick trailing SL: after T1 hit, SL = entry + floor((ltp - t1) / trailStep) * trailStep
-    // e.g. entry=70, T1=85, trailStep=1: LTP=86→SL=71, LTP=87→SL=72
+    // Per-tick trailing SL: after T1, SL = entry + floor((ltp - t1) / trailStep) * trailStep
     if (t.t1Hit && t.trailStep > 0 && ltp > t.t1) {
       const gain = ltp - t.t1;
       const steppedGain = Math.floor(gain / t.trailStep) * t.trailStep;
@@ -102,21 +104,21 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
         t = { ...t, sl: trailSl };
       }
     }
-    // T1 → exit 50% (1 bucket), trail SL to entry
+    // T1 → mark only (no sell), trail SL to entry
     if (!t.t1Hit && ltp >= t.t1) {
-      const bPnl = Math.round(((t.t1 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
-      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 50% sold (${t.qtyPerBucket} qty), SL → entry ₹${t.entryPrice}`, bPnl - t.bookedPnl);
+      addEvent('T1_HIT', `T1 ₹${t.t1} marked — SL → entry ₹${t.entryPrice}`);
       addEvent('SL_TRAILED', `SL set to breakeven ₹${t.entryPrice}`);
-      t = { ...t, t1Hit: true, bookedPnl: bPnl, sl: t.entryPrice, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
+      t = { ...t, t1Hit: true, sl: t.entryPrice };
     }
-    // T2 → milestone: lock SL to T1 (no exit)
+    // T2 → exit 1 bucket, SL → T1
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
-      const lockedSl = Math.max(t.sl, t.t1);
-      addEvent('T2_HIT', `T2 ₹${t.t2} milestone — SL minimum set to ₹${lockedSl}, trailing continues`);
-      t = { ...t, t2Hit: true, sl: lockedSl };
+      const bPnl = Math.round(((t.t2 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
+      addEvent('T2_HIT', `T2 ₹${t.t2} hit — 1 bucket sold (${t.qtyPerBucket} qty), SL → T1 ₹${t.t1}`, bPnl - t.bookedPnl);
+      addEvent('SL_TRAILED', `SL locked to T1 ₹${t.t1}`);
+      t = { ...t, t2Hit: true, bookedPnl: bPnl, sl: t.t1, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
-    // T3 → exit remaining 50% (1 bucket)
-    if (t.t1Hit && !t.t3Hit && ltp >= t.t3) {
+    // T3 → exit remaining 1 bucket
+    if (t.t2Hit && !t.t3Hit && ltp >= t.t3) {
       const remPnl = (t.t3 - t.entryPrice) * t.remainingQty;
       const finalPnl = Math.round((t.bookedPnl + remPnl) * 100) / 100;
       addEvent('T3_HIT', `T3 ₹${t.t3} hit — remaining ${t.remainingQty} qty exited`, remPnl);

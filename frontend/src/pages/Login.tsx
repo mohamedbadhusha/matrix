@@ -123,8 +123,40 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Protocol Behaviour Reference */}
+        <div className="relative z-10 mt-2">
+          <p className="text-xs font-semibold text-muted/60 uppercase tracking-wider mb-2">Protocol Behaviour Reference</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px]">
+              <thead>
+                <tr className="border-b border-border/30 text-muted/50 text-left">
+                  <th className="pb-1.5 pr-3 font-medium">Protocol</th>
+                  <th className="pb-1.5 pr-3 font-medium">T1</th>
+                  <th className="pb-1.5 pr-3 font-medium">T2</th>
+                  <th className="pb-1.5 font-medium">T3</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Protector',      'Exit 1 bucket + SL→entry', 'No exit + SL→T1',         'Exit ALL 2 remaining'],
+                  ['Half & Half',    'Mark only + SL→entry',     'Exit 1 bucket + SL→T1',   'Exit remaining 1 bucket'],
+                  ['Dbl Scalper',    'Exit 1 bucket (scalp)',    'Exit 2nd bucket (scalp)',  'Guard exit'],
+                  ['Sngl Scalper',   'SL→entry (hold)',          'SL→T1 (hold)',             'Exit ALL lots'],
+                ].map(([p, t1, t2, t3]) => (
+                  <tr key={p} className="border-b border-border/20">
+                    <td className="py-1.5 pr-3 text-accent-cyan/70 font-semibold whitespace-nowrap">{p}</td>
+                    <td className="py-1.5 pr-3 text-muted/70">{t1}</td>
+                    <td className="py-1.5 pr-3 text-muted/70">{t2}</td>
+                    <td className="py-1.5 text-muted/70">{t3}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Footer */}
-        <p className="relative z-10 text-xs text-muted/40">
+        <p className="relative z-10 text-xs text-muted/40 mt-4">
           NSE/BSE F&O · Dhan HQ API · Supabase · Railway
         </p>
       </div>
