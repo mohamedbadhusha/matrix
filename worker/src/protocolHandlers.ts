@@ -37,6 +37,7 @@ export interface TradeNode {
   max_price_reached: number | null;
   broker_order_id: string | null;
   sl_order_id: string | null;
+  trail_step: number | null; // trailing SL distance (points), null = disabled
   status: string;
 }
 
@@ -245,42 +246,55 @@ export async function handleProtector(
 
 // ═══════════════════════════════════════════════════════════════════
 // HALF_AND_HALF (2 buckets)
-//   T1 → mark only (no exit), trail SL to entry
-//   T2 → exit 1 bucket, trail SL to T1
-//   T3 → exit remaining 1 bucket
-//   SL → exit all remaining
+//   T1 → exit 50% (1 bucket), trail SL to entry
+//   T2 → milestone: trail SL to T1 (no exit)
+//   T3 → exit remaining 50% (1 bucket)
+//   After T1: trailing SL active when trail_step > 0
+//   SL → exit all remaining at market
 // ═══════════════════════════════════════════════════════════════════
 export async function handleHalfAndHalf(
   supabase: SupabaseClient,
   trade: TradeNode,
   ltp: number,
 ) {
+  const trailStep = trade.trail_step ?? 0;
+  let currentSl = trade.sl;
+
+  // Trailing SL: after T1 hit, raise SL as LTP rises
+  if (trade.t1_hit && trailStep > 0) {
+    const trailSl = Math.round((ltp - trailStep) * 100) / 100;
+    if (trailSl > currentSl) {
+      currentSl = trailSl;
+      await updateTrade(supabase, trade.id, { sl: currentSl });
+      logger.info('HALF_AND_HALF trailing SL raised', { id: trade.id, newSl: currentSl, ltp });
+    }
+  }
+
   await updateTrade(supabase, trade.id, { ltp });
 
-  if (ltp <= trade.sl) {
-    await closeTrade(supabase, trade, ltp, 'SL_HIT');
+  if (ltp <= currentSl) {
+    await closeTrade(supabase, { ...trade, sl: currentSl }, ltp, 'SL_HIT');
     return;
   }
 
-  // T1 just marks but does NOT sell — SL moves to breakeven
+  // T1 — exit 50% (1 bucket), trail SL to entry
   if (!trade.t1_hit && ltp >= trade.t1) {
-    await updateTrade(supabase, trade.id, {
-      t1_hit: true,
-      sl: trade.entry_price,
-    });
-    logger.info('HALF_AND_HALF T1 mark — SL moved to entry', { id: trade.id });
+    await executeBucketSell(supabase, trade, trade.t1, 'T1');
+    await updateTrade(supabase, trade.id, { sl: trade.entry_price });
+    logger.info('HALF_AND_HALF T1 — 50% sold, SL → entry', { id: trade.id });
     return;
   }
 
-  // T2 — exit bucket 1 of 2
+  // T2 — milestone: lock SL to T1 (no exit)
   if (trade.t1_hit && !trade.t2_hit && ltp >= trade.t2) {
-    await executeBucketSell(supabase, trade, trade.t2, 'T2');
-    await updateTrade(supabase, trade.id, { sl: trade.t1 });
+    const lockedSl = Math.max(currentSl, trade.t1);
+    await updateTrade(supabase, trade.id, { t2_hit: true, sl: lockedSl });
+    logger.info('HALF_AND_HALF T2 milestone — SL locked to T1', { id: trade.id });
     return;
   }
 
-  // T3 — sell remaining
-  if (trade.t2_hit && !trade.t3_hit && ltp >= trade.t3) {
+  // T3 — exit remaining 50% (guard: t1 must be hit)
+  if (trade.t1_hit && !trade.t3_hit && ltp >= trade.t3) {
     await executeBucketSell(supabase, trade, trade.t3, 'T3');
     return;
   }

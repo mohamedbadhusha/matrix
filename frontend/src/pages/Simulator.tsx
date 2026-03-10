@@ -34,6 +34,7 @@ interface SimTrade {
   exitPrice: number | null;
   realisedPnl: number | null;
   ltp: number;
+  trailStep: number; // trailing SL step (0 = disabled)
   events: SimEvent[];
 }
 
@@ -173,6 +174,7 @@ function buildSimTrade(
   protocol: Protocol,
   lots: number,
   targetMode: 'MANUAL' | 'MOMENTUM',
+  trailStep: number,
 ): SimTrade {
   const lotSize = LOT_SIZES[signal.symbol] ?? 1;
   let { t1, t2, t3 } = signal;
@@ -196,6 +198,7 @@ function buildSimTrade(
     t1Hit: false, t2Hit: false, t3Hit: false, slHit: false,
     bookedPnl: 0, status: 'ACTIVE', exitPrice: null, realisedPnl: null,
     ltp: signal.entryPrice,
+    trailStep,
     events: [entry],
   };
 }
@@ -220,6 +223,7 @@ export default function Simulator() {
   const [protocol, setProtocol] = useState<Protocol>('PROTECTOR');
   const [lots, setLots] = useState(3); // Protector default = 3 (1 per bucket)
   const [targetMode, setTargetMode] = useState<'MANUAL' | 'MOMENTUM'>('MANUAL');
+  const [trailStep, setTrailStep] = useState(5); // trailing SL step for Half & Half
   const [trade, setTrade] = useState<SimTrade | null>(null);
   const [ltpInput, setLtpInput] = useState('');
   const [stepSize, setStepSize] = useState(1);
@@ -242,9 +246,9 @@ export default function Simulator() {
   // Start sim
   const handleStart = useCallback(() => {
     if (!parsedSignal) return;
-    setTrade(buildSimTrade(parsedSignal, protocol, lots, targetMode));
+    setTrade(buildSimTrade(parsedSignal, protocol, lots, targetMode, trailStep));
     setLtpInput(String(parsedSignal.entryPrice));
-  }, [parsedSignal, protocol, lots, targetMode]);
+  }, [parsedSignal, protocol, lots, targetMode, trailStep]);
 
   // Reset
   const handleReset = useCallback(() => {
@@ -399,6 +403,30 @@ export default function Simulator() {
                   }}
                 />
               </div>
+              {protocol === 'HALF_AND_HALF' && (
+                <div>
+                  <label className="text-xs text-muted mb-1 block">
+                    Trail SL Step
+                    <span className="ml-1 text-[10px] text-accent-cyan/70">(pts after T1)</span>
+                  </label>
+                  <div className="flex gap-1 flex-wrap">
+                    {[0, 1, 2, 3, 5, 7, 10].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setTrailStep(s)}
+                        className={cn(
+                          'px-2 py-1 rounded text-[10px] font-mono border transition-all',
+                          trailStep === s
+                            ? 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/40'
+                            : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                        )}
+                      >
+                        {s === 0 ? 'Off' : `+${s}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="text-xs text-muted mb-1 block">Target Mode</label>
                 <div className="flex rounded-lg overflow-hidden border border-border">

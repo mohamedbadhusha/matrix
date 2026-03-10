@@ -62,7 +62,7 @@ export const PROTOCOL_META: Record<Protocol, {
   },
   HALF_AND_HALF: {
     label: 'Half & Half',
-    description: '2 buckets • Balanced — exit 50% at T1, exit 50% at T2',
+    description: '2 buckets • Balanced — exit 50% at T1, trailing SL, exit 50% at T3',
     color: '#7B2FBE',
     glowClass: 'glow-purple',
     tagClass: 'bg-purple-400/10 text-purple-400 border-purple-400/30',

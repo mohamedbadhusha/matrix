@@ -117,6 +117,7 @@ export interface TradeNode {
   max_price_reached: number | null;
   broker_order_id: string | null;
   sl_order_id: string | null;
+  trail_step: number | null; // trailing SL step in points (Half & Half only)
   exit_price: number | null;
   realised_pnl: number | null;
   is_master_signal: boolean;

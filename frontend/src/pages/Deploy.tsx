@@ -35,6 +35,7 @@ const defaultForm = {
   t2: '',
   t3: '',
   lots: '1',
+  trailStep: '5', // trailing SL step for Half & Half
 };
 
 export default function Deploy() {
@@ -218,6 +219,7 @@ export default function Deploy() {
         status: 'ACTIVE',
         booked_pnl: 0,
         is_processing: false,
+        trail_step: form.protocol === 'HALF_AND_HALF' ? parseInt(form.trailStep) || 0 : 0,
       });
 
       if (error) throw new Error(error.message);
@@ -388,6 +390,37 @@ export default function Deploy() {
               }}
             />
           </div>
+
+          {/* Trail Step — only for Half & Half */}
+          {form.protocol === 'HALF_AND_HALF' && (
+            <div className="col-span-2">
+              <label className="block text-xs text-muted mb-1.5">
+                Trailing SL Step <span className="text-muted/50">(points after T1 hit)</span>
+              </label>
+              <div className="flex gap-1.5 flex-wrap">
+                {[0, 1, 2, 3, 5, 7, 10].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, trailStep: String(s) }))}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-mono border transition-all',
+                      parseInt(form.trailStep) === s
+                        ? 'bg-accent-cyan/20 text-accent-cyan border-accent-cyan/40'
+                        : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                    )}
+                  >
+                    {s === 0 ? 'Off' : `+${s} pts`}
+                  </button>
+                ))}
+              </div>
+              {parseInt(form.trailStep) > 0 && (
+                <p className="text-[10px] text-accent-cyan/60 mt-1">
+                  After T1: SL will trail {form.trailStep} pts below LTP on every tick
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Target Mode */}
           <div>

@@ -150,6 +150,9 @@ CREATE TABLE IF NOT EXISTS public.trade_nodes (
   booked_pnl          NUMERIC(12,2) NOT NULL DEFAULT 0,
   max_price_reached   NUMERIC(10,2),
 
+  -- Trailing SL distance in points (Half & Half)
+  trail_step          INT DEFAULT 0,
+
   -- Broker order IDs (critical for SL cancel at T3)
   broker_order_id     TEXT,
   sl_order_id         TEXT,
