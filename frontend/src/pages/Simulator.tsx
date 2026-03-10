@@ -157,16 +157,14 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
 
   // ── SINGLE_SCALPER ────────────────────────────────────────────────────────
   if (t.protocol === 'SINGLE_SCALPER') {
-    // T1 → trail SL to entry (breakeven)
+    // T1 → lock floor at entry (breakeven)
     if (!t.t1Hit && ltp >= t.t1) {
-      addEvent('T1_HIT', `T1 ₹${t.t1} reached — SL trailed to entry ₹${t.entryPrice}`);
-      addEvent('SL_TRAILED', `SL trailed to breakeven ₹${t.entryPrice}`);
+      addEvent('T1_HIT', `T1 ₹${t.t1} reached — floor locked at entry ₹${t.entryPrice} (riding wave...)`);
       t = { ...t, t1Hit: true, sl: t.entryPrice };
     }
-    // T2 → trail SL to T1
+    // T2 → lock floor at T1 (guaranteed profit)
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
-      addEvent('T2_HIT', `T2 ₹${t.t2} reached — SL trailed to T1 ₹${t.t1}`);
-      addEvent('SL_TRAILED', `SL trailed to ₹${t.t1}`);
+      addEvent('T2_HIT', `T2 ₹${t.t2} reached — floor locked at T1 ₹${t.t1} (riding wave...)`);
       t = { ...t, t2Hit: true, sl: t.t1 };
     }
     // T3 → exit ALL lots

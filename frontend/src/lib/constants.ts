@@ -71,14 +71,14 @@ export const PROTOCOL_META: Record<Protocol, {
   },
   DOUBLE_SCALPER: {
     label: 'Double Scalper',
-    description: '2 buckets • Aggressive — wider targets for bigger moves',
+    description: '2 buckets • Wider targets — scalp 1 at T1 (SL→entry), scalp 2 at T2',
     color: '#FF6B35',
     glowClass: 'glow-orange',
     tagClass: 'bg-orange-400/10 text-orange-400 border-orange-400/30',
   },
   SINGLE_SCALPER: {
     label: 'Single Scalper',
-    description: '1 bucket • All-in — hold to T3 for maximum scalp',
+    description: '1 bucket • Ride the wave — T1/T2 lock your floor, full exit at T3',
     color: '#00C896',
     glowClass: 'glow-green',
     tagClass: 'bg-green-400/10 text-green-400 border-green-400/30',
