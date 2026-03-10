@@ -91,21 +91,30 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
 
   // ── HALF_AND_HALF ─────────────────────────────────────────────────────────
   if (t.protocol === 'HALF_AND_HALF') {
-    // T1 → mark only, trail SL to entry
+    // Per-tick trailing SL: after T1 hit, raise SL as LTP rises
+    if (t.t1Hit && t.trailStep > 0) {
+      const trailSl = Math.round((ltp - t.trailStep) * 100) / 100;
+      if (trailSl > t.sl) {
+        addEvent('SL_TRAILED', `SL trailed to ₹${trailSl}`);
+        t = { ...t, sl: trailSl };
+      }
+    }
+    // T1 → exit 50% (1 bucket), trail SL to entry
     if (!t.t1Hit && ltp >= t.t1) {
-      addEvent('T1_HIT', `T1 ₹${t.t1} marked — no exit yet, SL → entry ₹${t.entryPrice}`);
+      const bPnl = Math.round(((t.t1 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
+      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 50% sold (${t.qtyPerBucket} qty), SL → entry ₹${t.entryPrice}`, bPnl - t.bookedPnl);
       addEvent('SL_TRAILED', `SL trailed to breakeven ₹${t.entryPrice}`);
-      t = { ...t, t1Hit: true, sl: t.entryPrice };
+      t = { ...t, t1Hit: true, bookedPnl: bPnl, sl: t.entryPrice, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
-    // T2 → exit bucket 1 of 2
+    // T2 → milestone: lock SL to T1 (no exit)
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
-      const bPnl = Math.round(((t.t2 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
-      addEvent('T2_HIT', `T2 ₹${t.t2} hit — 1 bucket sold, SL → T1 ₹${t.t1}`, bPnl - t.bookedPnl);
-      addEvent('SL_TRAILED', `SL trailed to ₹${t.t1}`);
-      t = { ...t, t2Hit: true, bookedPnl: bPnl, sl: t.t1, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
+      const lockedSl = Math.max(t.sl, t.t1);
+      addEvent('T2_HIT', `T2 ₹${t.t2} milestone — SL locked to T1 ₹${t.t1}`);
+      addEvent('SL_TRAILED', `SL locked to ₹${lockedSl}`);
+      t = { ...t, t2Hit: true, sl: lockedSl };
     }
-    // T3 → exit remaining
-    if (t.t2Hit && !t.t3Hit && ltp >= t.t3) {
+    // T3 → exit remaining 50% (1 bucket)
+    if (t.t1Hit && !t.t3Hit && ltp >= t.t3) {
       const remPnl = (t.t3 - t.entryPrice) * t.remainingQty;
       const finalPnl = Math.round((t.bookedPnl + remPnl) * 100) / 100;
       addEvent('T3_HIT', `T3 ₹${t.t3} hit — remaining ${t.remainingQty} qty exited`, remPnl);
