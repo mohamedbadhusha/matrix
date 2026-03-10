@@ -279,23 +279,23 @@ export async function handleHalfAndHalf(
     return;
   }
 
-  // T1 — mark only (no sell), snap SL to entry, then trailing takes over
+  // T1 — exit 1 bucket (50%), SL → entry, trailing starts
   if (!trade.t1_hit && ltp >= trade.t1) {
+    await executeBucketSell(supabase, trade, trade.t1, 'T1');
     await updateTrade(supabase, trade.id, { t1_hit: true, sl: trade.entry_price });
-    logger.info('HALF_AND_HALF T1 — marked, SL → entry', { id: trade.id });
+    logger.info('HALF_AND_HALF T1 — 1 bucket sold, SL → entry', { id: trade.id });
     return;
   }
 
-  // T2 — exit 1 bucket, SL → T1
+  // T2 — milestone only (no sell)
   if (trade.t1_hit && !trade.t2_hit && ltp >= trade.t2) {
-    await executeBucketSell(supabase, trade, trade.t2, 'T2');
-    await updateTrade(supabase, trade.id, { sl: trade.t1 });
-    logger.info('HALF_AND_HALF T2 — 1 bucket sold, SL → T1', { id: trade.id });
+    await updateTrade(supabase, trade.id, { t2_hit: true });
+    logger.info('HALF_AND_HALF T2 — milestone', { id: trade.id });
     return;
   }
 
   // T3 — exit remaining 1 bucket
-  if (trade.t2_hit && !trade.t3_hit && ltp >= trade.t3) {
+  if (trade.t1_hit && !trade.t3_hit && ltp >= trade.t3) {
     await executeBucketSell(supabase, trade, trade.t3, 'T3');
     return;
   }

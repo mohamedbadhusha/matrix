@@ -90,7 +90,7 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
   }
 
   // ── HALF_AND_HALF ─────────────────────────────────────────────────────────
-  // T1 → Mark only + SL→entry, then trail SL = entry + gain from T1
+  // T1 → Exit 1 bucket (50%) + SL→entry, then trail SL = entry + gain from T1
   // T2 → Exit 1 bucket + SL→T1
   // T3 → Exit remaining 1 bucket
   if (t.protocol === 'HALF_AND_HALF') {
@@ -104,21 +104,20 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
         t = { ...t, sl: trailSl };
       }
     }
-    // T1 → mark only (no sell), trail SL to entry
+    // T1 → exit 1 bucket (50%), SL → entry, trail starts
     if (!t.t1Hit && ltp >= t.t1) {
-      addEvent('T1_HIT', `T1 ₹${t.t1} marked — SL → entry ₹${t.entryPrice}`);
+      const bPnl = Math.round(((t.t1 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
+      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 1 bucket sold (${t.qtyPerBucket} qty), SL → entry ₹${t.entryPrice}`, bPnl - t.bookedPnl);
       addEvent('SL_TRAILED', `SL set to breakeven ₹${t.entryPrice}`);
-      t = { ...t, t1Hit: true, sl: t.entryPrice };
+      t = { ...t, t1Hit: true, sl: t.entryPrice, bookedPnl: bPnl, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
-    // T2 → exit 1 bucket, SL → T1
+    // T2 → milestone only (no sell)
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
-      const bPnl = Math.round(((t.t2 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
-      addEvent('T2_HIT', `T2 ₹${t.t2} hit — 1 bucket sold (${t.qtyPerBucket} qty), SL → T1 ₹${t.t1}`, bPnl - t.bookedPnl);
-      addEvent('SL_TRAILED', `SL locked to T1 ₹${t.t1}`);
-      t = { ...t, t2Hit: true, bookedPnl: bPnl, sl: t.t1, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
+      addEvent('T2_HIT', `T2 ₹${t.t2} milestone hit`);
+      t = { ...t, t2Hit: true };
     }
     // T3 → exit remaining 1 bucket
-    if (t.t2Hit && !t.t3Hit && ltp >= t.t3) {
+    if (t.t1Hit && !t.t3Hit && ltp >= t.t3) {
       const remPnl = (t.t3 - t.entryPrice) * t.remainingQty;
       const finalPnl = Math.round((t.bookedPnl + remPnl) * 100) / 100;
       addEvent('T3_HIT', `T3 ₹${t.t3} hit — remaining ${t.remainingQty} qty exited`, remPnl);
@@ -718,7 +717,7 @@ export default function Simulator() {
             <tbody className="space-y-1">
               {([
                 ['PROTECTOR',      '3', 'Exit 1 bucket + SL→entry', 'No exit + SL→T1', 'Exit ALL 2 remaining', 'Exit all remaining'],
-                ['HALF_AND_HALF',  '2', 'Mark only + SL→entry',     'Exit 1 bucket + SL→T1', 'Exit remaining 1 bucket', 'Exit all remaining'],
+                ['HALF_AND_HALF',  '2', 'Exit 1 bucket + SL→entry',  'Milestone only',         'Exit remaining 1 bucket', 'Exit all remaining'],
                 ['DOUBLE_SCALPER', '2', 'Exit 1 bucket + SL→entry', 'Exit 2nd bucket (scalp)', 'Guard exit', 'Exit all remaining'],
                 ['SINGLE_SCALPER', '1', 'SL→entry (hold)',           'SL→T1 (hold)',    'Exit ALL lots at once', 'Exit all remaining'],
                 ['TRAIL_RUNNER',   '1', 'SL→entry + trail ON',       'Milestone (hold)', 'Milestone (hold)',     'Exit all remaining'],

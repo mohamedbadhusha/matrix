@@ -139,7 +139,7 @@ export default function Login() {
               <tbody>
                 {[
                   ['Protector',      'Exit 1 bucket + SL→entry', 'No exit + SL→T1',         'Exit ALL 2 remaining'],
-                  ['Half & Half',    'Mark only + SL→entry',     'Exit 1 bucket + SL→T1',   'Exit remaining 1 bucket'],
+                  ['Half & Half',    'Exit 1 bucket + SL→entry', 'Milestone only',           'Exit remaining 1 bucket'],
                   ['Dbl Scalper',    'Exit 1 bucket (scalp)',    'Exit 2nd bucket (scalp)',  'Guard exit'],
                   ['Sngl Scalper',   'SL→entry (hold)',          'SL→T1 (hold)',             'Exit ALL lots'],
                 ].map(([p, t1, t2, t3]) => (
