@@ -260,8 +260,8 @@ export async function handleHalfAndHalf(
   const trailStep = trade.trail_step ?? 0;
   let currentSl = trade.sl;
 
-  // Trailing SL: after T1 hit, raise SL as LTP rises
-  if (trade.t1_hit && trailStep > 0) {
+  // Trailing SL: raise SL from entry price all the way to T3
+  if (trailStep > 0) {
     const trailSl = Math.round((ltp - trailStep) * 100) / 100;
     if (trailSl > currentSl) {
       currentSl = trailSl;
@@ -277,11 +277,10 @@ export async function handleHalfAndHalf(
     return;
   }
 
-  // T1 — exit 50% (1 bucket), trail SL to entry
+  // T1 — exit 50% (1 bucket); trailing SL already active from entry
   if (!trade.t1_hit && ltp >= trade.t1) {
     await executeBucketSell(supabase, trade, trade.t1, 'T1');
-    await updateTrade(supabase, trade.id, { sl: trade.entry_price });
-    logger.info('HALF_AND_HALF T1 — 50% sold, SL → entry', { id: trade.id });
+    logger.info('HALF_AND_HALF T1 — 50% sold', { id: trade.id });
     return;
   }
 
