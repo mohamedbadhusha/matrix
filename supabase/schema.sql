@@ -1227,4 +1227,12 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_postback_l
 
 -- ============================================================
 -- Done!
+
+-- ============================================================
+-- MIGRATIONS (run these once on existing databases)
+-- ============================================================
+
+-- 2026-03-10 | Add trailing SL step for Half & Half protocol
+ALTER TABLE public.trade_nodes
+  ADD COLUMN IF NOT EXISTS trail_step INT NOT NULL DEFAULT 0;
 -- ============================================================
