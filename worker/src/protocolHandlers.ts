@@ -260,9 +260,12 @@ export async function handleHalfAndHalf(
   const trailStep = trade.trail_step ?? 0;
   let currentSl = trade.sl;
 
-  // Trailing SL: only after T1 hit — trail ltp - trailStep from last SL
-  if (trade.t1_hit && trailStep > 0) {
-    const trailSl = Math.round((ltp - trailStep) * 100) / 100;
+  // Trailing SL: after T1, SL = entry + floor((ltp - t1) / trailStep) * trailStep
+  // e.g. entry=70, T1=85, trailStep=1: LTP=86→SL=71, LTP=87→SL=72
+  if (trade.t1_hit && trailStep > 0 && ltp > trade.t1) {
+    const gain = ltp - trade.t1;
+    const steppedGain = Math.floor(gain / trailStep) * trailStep;
+    const trailSl = Math.round((trade.entry_price + steppedGain) * 100) / 100;
     if (trailSl > currentSl) {
       currentSl = trailSl;
       await updateTrade(supabase, trade.id, { sl: currentSl });

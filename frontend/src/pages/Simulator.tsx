@@ -91,9 +91,12 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
 
   // ── HALF_AND_HALF ─────────────────────────────────────────────────────────
   if (t.protocol === 'HALF_AND_HALF') {
-    // Per-tick trailing SL: only after T1 hit — trail ltp - trailStep from last SL
-    if (t.t1Hit && t.trailStep > 0) {
-      const trailSl = Math.round((ltp - t.trailStep) * 100) / 100;
+    // Per-tick trailing SL: after T1 hit, SL = entry + floor((ltp - t1) / trailStep) * trailStep
+    // e.g. entry=70, T1=85, trailStep=1: LTP=86→SL=71, LTP=87→SL=72
+    if (t.t1Hit && t.trailStep > 0 && ltp > t.t1) {
+      const gain = ltp - t.t1;
+      const steppedGain = Math.floor(gain / t.trailStep) * t.trailStep;
+      const trailSl = Math.round((t.entryPrice + steppedGain) * 100) / 100;
       if (trailSl > t.sl) {
         addEvent('SL_TRAILED', `SL trailed to ₹${trailSl}`);
         t = { ...t, sl: trailSl };
