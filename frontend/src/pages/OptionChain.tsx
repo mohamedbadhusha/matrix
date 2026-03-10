@@ -8,8 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { BrokerAccount, OptionChainOC, OptionLeg } from '@/types';
-import { RefreshCw, ChevronDown, Layers, Clock, BarChart2, AlertTriangle, KeyRound } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { RefreshCw, ChevronDown, Layers, Clock, BarChart2, AlertTriangle, KeyRound, Zap } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 // ── Well-known underlyings ───────────────────────────────────────────────────
 const UNDERLYINGS = [
@@ -106,9 +106,20 @@ function LegCell({ leg, side, maxOI, showGreeks }: {
   );
 }
 
+// ── Symbol map: option chain label → Deploy symbol key ─────────────────────
+const UNDERLYING_TO_SYMBOL: Record<string, string> = {
+  'NIFTY 50':     'NIFTY',
+  'BANK NIFTY':   'BANKNIFTY',
+  'FIN NIFTY':    'FINNIFTY',
+  'MIDCAP NIFTY': 'MIDCPNIFTY',
+  'SENSEX':       'SENSEX',
+  'BANKEX':       'BANKEX',
+};
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function OptionChain() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
   // Broker
   const [brokers, setBrokers]               = useState<BrokerAccount[]>([]);
@@ -137,6 +148,20 @@ export default function OptionChain() {
   const [showGreeks, setShowGreeks]         = useState(false);
   const [autoRefresh, setAutoRefresh]       = useState(false);
   const [countdown, setCountdown]           = useState(0);
+
+  // Navigate to Deploy with pre-filled option data
+  const handleDeployOption = (strike: number, type: 'CE' | 'PE', ltp: number) => {
+    const label = underlyingIdx < UNDERLYINGS.length - 1 ? UNDERLYINGS[underlyingIdx].label : '';
+    const symbol = UNDERLYING_TO_SYMBOL[label] ?? 'NIFTY';
+    navigate('/deploy', {
+      state: {
+        fromOptionChain: true,
+        symbol,
+        strike: `${strike} ${type}`,
+        entryPrice: ltp,
+      },
+    });
+  };
 
   // Rate-limit enforcement
   const lastFetchRef  = useRef<number>(0);
@@ -245,26 +270,34 @@ export default function OptionChain() {
   }, [autoRefresh, fetchChain]);
 
   // Parse chain into sorted strike rows
-  const strikes = chainData
+  const allStrikes = chainData
     ? Object.entries(chainData.oc)
         .map(([k, v]) => ({ strike: parseFloat(k), ce: v.ce, pe: v.pe }))
         .sort((a, b) => a.strike - b.strike)
     : [];
 
   const atmStrike = chainData
-    ? strikes.reduce((best, s) =>
+    ? allStrikes.reduce((best, s) =>
         best === null || Math.abs(s.strike - chainData.last_price) < Math.abs(best - chainData.last_price)
           ? s.strike : best, null as number | null)
     : null;
+
+  // Show only 8 strikes above and 8 below ATM
+  const strikes = (() => {
+    if (!atmStrike) return allStrikes;
+    const atmIdx = allStrikes.findIndex(s => s.strike === atmStrike);
+    if (atmIdx === -1) return allStrikes;
+    return allStrikes.slice(Math.max(0, atmIdx - 8), atmIdx + 9);
+  })();
 
   // Max OI for bar scaling
   const maxCeOI = Math.max(1, ...strikes.map(s => s.ce?.oi ?? 0));
   const maxPeOI = Math.max(1, ...strikes.map(s => s.pe?.oi ?? 0));
   const maxOI   = Math.max(maxCeOI, maxPeOI);
 
-  // PCR
-  const totalCeOI = strikes.reduce((s, r) => s + (r.ce?.oi ?? 0), 0);
-  const totalPeOI = strikes.reduce((s, r) => s + (r.pe?.oi ?? 0), 0);
+  // PCR — use full chain data, not the sliced view
+  const totalCeOI = allStrikes.reduce((s, r) => s + (r.ce?.oi ?? 0), 0);
+  const totalPeOI = allStrikes.reduce((s, r) => s + (r.pe?.oi ?? 0), 0);
   const pcr = totalCeOI > 0 ? (totalPeOI / totalCeOI).toFixed(2) : '—';
 
   return (
@@ -530,13 +563,18 @@ export default function OptionChain() {
                       <td className={cn('px-1.5 py-1.5 text-right', itm_ce ? 'bg-loss/5' : '')}>
                         {ce ? <p className="font-mono text-[10px] text-accent-purple">{fmtN(ce.implied_volatility, 1)}%</p> : <span className="text-muted">—</span>}
                       </td>
-                      {/* CE LTP */}
+                      {/* CE LTP — click to deploy */}
                       <td className={cn('px-1.5 py-1.5 text-right border-r border-border/40', itm_ce ? 'bg-loss/5' : '')}>
                         {ce ? (
-                          <div>
-                            <p className="font-mono font-semibold text-xs">{fmtN(ce.last_price)}</p>
+                          <button
+                            onClick={() => handleDeployOption(strike, 'CE', ce.last_price)}
+                            className="text-right w-full hover:bg-loss/15 rounded px-1 py-0.5 transition-colors group cursor-pointer"
+                            title={`Deploy CALL ${strike} CE @ ₹${fmtN(ce.last_price)}`}
+                          >
+                            <p className="font-mono font-semibold text-xs group-hover:text-loss transition-colors">{fmtN(ce.last_price)}</p>
                             <p className="font-mono text-[9px] text-muted">{fmtN(ce.average_price)}</p>
-                          </div>
+                            <p className="font-mono text-[8px] text-loss/0 group-hover:text-loss/70 transition-colors flex items-center justify-end gap-0.5"><Zap size={7} />Deploy</p>
+                          </button>
                         ) : <span className="text-muted">—</span>}
                       </td>
 
@@ -546,13 +584,18 @@ export default function OptionChain() {
                         {isATM && <span className="ml-1 text-[9px] bg-accent-cyan/20 text-accent-cyan px-1 rounded">ATM</span>}
                       </td>
 
-                      {/* PE LTP */}
+                      {/* PE LTP — click to deploy */}
                       <td className={cn('px-1.5 py-1.5 text-left border-l border-border/40', itm_pe ? 'bg-profit/5' : '')}>
                         {pe ? (
-                          <div>
-                            <p className="font-mono font-semibold text-xs">{fmtN(pe.last_price)}</p>
+                          <button
+                            onClick={() => handleDeployOption(strike, 'PE', pe.last_price)}
+                            className="text-left w-full hover:bg-profit/15 rounded px-1 py-0.5 transition-colors group cursor-pointer"
+                            title={`Deploy PUT ${strike} PE @ ₹${fmtN(pe.last_price)}`}
+                          >
+                            <p className="font-mono font-semibold text-xs group-hover:text-profit transition-colors">{fmtN(pe.last_price)}</p>
                             <p className="font-mono text-[9px] text-muted">{fmtN(pe.average_price)}</p>
-                          </div>
+                            <p className="font-mono text-[8px] text-profit/0 group-hover:text-profit/70 transition-colors flex items-center gap-0.5"><Zap size={7} />Deploy</p>
+                          </button>
                         ) : <span className="text-muted">—</span>}
                       </td>
                       {/* PE IV */}
@@ -609,6 +652,7 @@ export default function OptionChain() {
             <span className="text-loss">■ ITM (CE)</span>
             <span className="text-profit">■ ITM (PE)</span>
             <span className="text-accent-cyan">■ ATM</span>
+            <span className="flex items-center gap-1"><Zap size={9} className="text-accent-cyan" /> Click LTP to deploy strategy</span>
             <span className="ml-auto">OI bars scaled to max: {fmtOI(maxOI)}</span>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useTrades } from '@/app/providers/TradeProvider';
 import ProtocolSelector from '@/components/ProtocolSelector';
@@ -17,7 +17,7 @@ import {
 import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META } from '@/lib/constants';
 import type { Protocol, TargetMode, TradeMode, ParsedSignal, DeployTradeInput } from '@/types';
 import { toast } from 'sonner';
-import { AlertTriangle, ChevronRight, Info } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Info, Zap } from 'lucide-react';
 
 type Tab = 'signal' | 'manual';
 
@@ -41,6 +41,7 @@ export default function Deploy() {
   const { profile } = useAuth();
   const { refetchTrades } = useTrades();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [tab, setTab] = useState<Tab>('signal');
   const [form, setForm] = useState(defaultForm);
@@ -49,6 +50,7 @@ export default function Deploy() {
   const [showLiveWarning, setShowLiveWarning] = useState(false);
   const [brokerAccounts, setBrokerAccounts] = useState<{ id: string; client_id: string }[]>([]);
   const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
+  const [fromChain, setFromChain] = useState(false);
 
   const tier = profile?.tier ?? 'free';
   const allowedProtocols = profile
@@ -67,6 +69,25 @@ export default function Deploy() {
       .then(({ data }) => {
         if (data) setBrokerAccounts(data);
       });
+  }, []);
+
+  // Pre-fill from Option Chain click
+  useEffect(() => {
+    const state = location.state as { fromOptionChain?: boolean; symbol?: string; strike?: string; entryPrice?: number } | null;
+    if (state?.fromOptionChain && state.symbol && state.strike) {
+      setFromChain(true);
+      setTab('manual');
+      setForm(f => ({
+        ...f,
+        symbol: state.symbol!,
+        strike: state.strike!,
+        entryPrice: state.entryPrice ? String(state.entryPrice) : '',
+        targetMode: 'MOMENTUM',
+      }));
+      // Clear state so a back-navigation doesn't re-trigger
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // When signal is parsed, populate form
@@ -226,7 +247,16 @@ export default function Deploy() {
           {tradesUsed}/{dailyLimit === Infinity ? '∞' : dailyLimit} trades used today
         </p>
       </div>
-
+      {/* From Option Chain banner */}
+      {fromChain && (
+        <div className="flex items-center gap-2 bg-accent-cyan/10 border border-accent-cyan/30 rounded-xl p-3 animate-fade-in">
+          <Zap size={14} className="text-accent-cyan flex-shrink-0" />
+          <p className="text-xs text-accent-cyan">
+            Pre-filled from Option Chain &mdash; <strong>{form.symbol} {form.strike}</strong> @ ₹{form.entryPrice}. Adjust parameters and deploy.
+          </p>
+          <button onClick={() => setFromChain(false)} className="ml-auto text-accent-cyan/60 hover:text-accent-cyan">✕</button>
+        </div>
+      )}
       {/* Daily limit warning */}
       {!allowed && (
         <div className="flex items-center gap-2 bg-loss/10 border border-loss/30 rounded-xl p-3">
