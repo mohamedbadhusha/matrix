@@ -91,8 +91,8 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
 
   // ── HALF_AND_HALF ─────────────────────────────────────────────────────────
   if (t.protocol === 'HALF_AND_HALF') {
-    // Per-tick trailing SL: raise SL from entry price all the way to T3
-    if (t.trailStep > 0) {
+    // Per-tick trailing SL: only after T1 hit — trail ltp - trailStep from last SL
+    if (t.t1Hit && t.trailStep > 0) {
       const trailSl = Math.round((ltp - t.trailStep) * 100) / 100;
       if (trailSl > t.sl) {
         addEvent('SL_TRAILED', `SL trailed to ₹${trailSl}`);
@@ -102,8 +102,9 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
     // T1 → exit 50% (1 bucket), trail SL to entry
     if (!t.t1Hit && ltp >= t.t1) {
       const bPnl = Math.round(((t.t1 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
-      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 50% sold (${t.qtyPerBucket} qty)`, bPnl - t.bookedPnl);
-      t = { ...t, t1Hit: true, bookedPnl: bPnl, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
+      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 50% sold (${t.qtyPerBucket} qty), SL → entry ₹${t.entryPrice}`, bPnl - t.bookedPnl);
+      addEvent('SL_TRAILED', `SL set to breakeven ₹${t.entryPrice}`);
+      t = { ...t, t1Hit: true, bookedPnl: bPnl, sl: t.entryPrice, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
     // T2 → milestone: lock SL to T1 (no exit)
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
