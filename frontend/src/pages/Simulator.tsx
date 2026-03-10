@@ -129,11 +129,12 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
 
   // ── DOUBLE_SCALPER ────────────────────────────────────────────────────────
   if (t.protocol === 'DOUBLE_SCALPER') {
-    // T1 → exit bucket 1
+    // T1 → exit bucket 1, SL → entry
     if (!t.t1Hit && ltp >= t.t1) {
       const bPnl = Math.round(((t.t1 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
-      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 1 bucket sold (scalp 1)`, bPnl - t.bookedPnl);
-      t = { ...t, t1Hit: true, bookedPnl: bPnl, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
+      addEvent('T1_HIT', `T1 ₹${t.t1} hit — 1 bucket sold (scalp 1), SL → entry ₹${t.entryPrice}`, bPnl - t.bookedPnl);
+      addEvent('SL_TRAILED', `SL set to breakeven ₹${t.entryPrice}`);
+      t = { ...t, t1Hit: true, bookedPnl: bPnl, sl: t.entryPrice, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
     // T2 → exit bucket 2
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
@@ -685,7 +686,7 @@ export default function Simulator() {
               {([
                 ['PROTECTOR',      '3', 'Exit 1 bucket + SL→entry', 'No exit + SL→T1', 'Exit ALL 2 remaining', 'Exit all remaining'],
                 ['HALF_AND_HALF',  '2', 'Mark only + SL→entry',     'Exit 1 bucket + SL→T1', 'Exit remaining 1 bucket', 'Exit all remaining'],
-                ['DOUBLE_SCALPER', '2', 'Exit 1 bucket (scalp)',     'Exit 2nd bucket (scalp)', 'Guard exit', 'Exit all remaining'],
+                ['DOUBLE_SCALPER', '2', 'Exit 1 bucket + SL→entry', 'Exit 2nd bucket (scalp)', 'Guard exit', 'Exit all remaining'],
                 ['SINGLE_SCALPER', '1', 'SL→entry (hold)',           'SL→T1 (hold)',    'Exit ALL lots at once', 'Exit all remaining'],
               ] as const).map(([p, b, t1, t2, t3, sl]) => {
                 const meta = PROTOCOL_META[p as Protocol];

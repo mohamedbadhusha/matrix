@@ -321,7 +321,8 @@ export async function handleDoubleScalper(
 
   if (!trade.t1_hit && ltp >= trade.t1) {
     await executeBucketSell(supabase, trade, trade.t1, 'T1');
-    // SL moves to initial_sl (no trail)
+    await updateTrade(supabase, trade.id, { sl: trade.entry_price });
+    logger.info('DOUBLE_SCALPER T1 — bucket sold, SL → entry', { id: trade.id });
     return;
   }
 
