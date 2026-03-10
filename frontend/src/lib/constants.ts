@@ -55,7 +55,7 @@ export const PROTOCOL_META: Record<Protocol, {
 }> = {
   PROTECTOR: {
     label: 'Protector',
-    description: '3 buckets • Defensive — exit 1/3 at T1, trail SL, exit 2/3 at T3',
+    description: '3 buckets • Defensive — exit 1/3 at T1, 1/3 at T2, 1/3 at T3',
     color: '#00D4FF',
     glowClass: 'glow-cyan',
     tagClass: 'bg-cyan-400/10 text-cyan-400 border-cyan-400/30',

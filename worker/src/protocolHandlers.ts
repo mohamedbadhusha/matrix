@@ -160,7 +160,7 @@ async function executeBucketSell(
 }
 
 /**
- * PROTECTOR T3 — cancel SL order and exit ALL remaining 2 buckets at limit price.
+ * PROTECTOR T3 — cancel SL order and exit the remaining 1 bucket (1/3) at limit price.
  */
 async function executeProtectorT3Exit(supabase: SupabaseClient, trade: TradeNode): Promise<void> {
   await cancelSlOrder(supabase, trade);
@@ -197,14 +197,14 @@ async function executeProtectorT3Exit(supabase: SupabaseClient, trade: TradeNode
     sl_order_id: null,
   });
 
-  logger.info('PROTECTOR T3 — all 2 remaining buckets exited', { id: trade.id, exitPrice: trade.t3, finalPnl });
+  logger.info('PROTECTOR T3 — last 1 bucket exited', { id: trade.id, exitPrice: trade.t3, finalPnl });
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // PROTECTOR (3 buckets)
-//   T1 → exit 1 bucket, trail SL to entry (breakeven)
-//   T2 → NO EXIT — trail SL to T1 only
-//   T3 → exit remaining 2 buckets, cancel SL order
+//   T1 → exit 1/3 bucket, trail SL to entry (breakeven)
+//   T2 → exit 1/3 bucket, trail SL to T1
+//   T3 → exit remaining 1/3 bucket, cancel SL order
 //   SL → exit all remaining at market
 // ═══════════════════════════════════════════════════════════════════
 export async function handleProtector(
@@ -220,22 +220,23 @@ export async function handleProtector(
     return;
   }
 
-  // T1 — exit 1 bucket, trail SL to entry (breakeven)
+  // T1 — exit 1 bucket (1/3), trail SL to entry (breakeven)
   if (!trade.t1_hit && ltp >= trade.t1) {
     await executeBucketSell(supabase, trade, trade.t1, 'T1');
     await updateTrade(supabase, trade.id, { sl: trade.entry_price });
-    logger.info('PROTECTOR T1 — SL trailed to entry', { id: trade.id });
+    logger.info('PROTECTOR T1 — bucket sold, SL trailed to entry', { id: trade.id });
     return;
   }
 
-  // T2 — NO SELL; trail SL to T1 only
+  // T2 — exit 1 bucket (1/3), trail SL to T1
   if (trade.t1_hit && !trade.t2_hit && ltp >= trade.t2) {
-    await updateTrade(supabase, trade.id, { t2_hit: true, sl: trade.t1 });
-    logger.info('PROTECTOR T2 — SL trailed to T1, no exit', { id: trade.id });
+    await executeBucketSell(supabase, trade, trade.t2, 'T2');
+    await updateTrade(supabase, trade.id, { sl: trade.t1 });
+    logger.info('PROTECTOR T2 — bucket sold, SL trailed to T1', { id: trade.id });
     return;
   }
 
-  // T3 — guard: t1 must be hit; exit ALL remaining 2 buckets
+  // T3 — exit remaining 1 bucket (1/3), cancel SL order
   if (trade.t1_hit && trade.t2_hit && !trade.t3_hit && ltp >= trade.t3) {
     await executeProtectorT3Exit(supabase, trade);
     return;

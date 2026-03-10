@@ -62,6 +62,7 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
   }
 
   // ── PROTECTOR ─────────────────────────────────────────────────────────────
+  // Exit 1/3 at T1 (trail SL → entry), 1/3 at T2 (trail SL → T1), 1/3 at T3
   if (t.protocol === 'PROTECTOR') {
     // T1 → exit 1 bucket, trail SL to entry
     if (!t.t1Hit && ltp >= t.t1) {
@@ -70,17 +71,18 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
       addEvent('SL_TRAILED', `SL trailed to breakeven ₹${t.entryPrice}`);
       t = { ...t, t1Hit: true, bookedPnl: bPnl, sl: t.entryPrice, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
-    // T2 → NO exit, trail SL to T1
+    // T2 → exit 1 bucket, trail SL to T1
     if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
-      addEvent('T2_HIT', `T2 ₹${t.t2} reached — no exit, SL → T1 ₹${t.t1}`);
+      const bPnl = Math.round(((t.t2 - t.entryPrice) * t.qtyPerBucket + t.bookedPnl) * 100) / 100;
+      addEvent('T2_HIT', `T2 ₹${t.t2} hit — 1 bucket sold, SL → T1 ₹${t.t1}`, bPnl - t.bookedPnl);
       addEvent('SL_TRAILED', `SL trailed to ₹${t.t1}`);
-      t = { ...t, t2Hit: true, sl: t.t1 };
+      t = { ...t, t2Hit: true, bookedPnl: bPnl, sl: t.t1, remainingBuckets: t.remainingBuckets - 1, remainingQty: t.remainingQty - t.qtyPerBucket };
     }
-    // T3 → exit ALL remaining 2 buckets
+    // T3 → exit remaining 1 bucket (last 1/3)
     if (t.t1Hit && t.t2Hit && !t.t3Hit && ltp >= t.t3) {
       const remPnl = (t.t3 - t.entryPrice) * t.remainingQty;
       const finalPnl = Math.round((t.bookedPnl + remPnl) * 100) / 100;
-      addEvent('T3_HIT', `T3 ₹${t.t3} hit — remaining ${t.remainingQty} qty exited`, finalPnl - t.bookedPnl);
+      addEvent('T3_HIT', `T3 ₹${t.t3} hit — last ${t.remainingQty} qty exited`, remPnl);
       t = { ...t, t3Hit: true, bookedPnl: finalPnl, status: 'CLOSED', exitPrice: t.t3, realisedPnl: finalPnl, remainingBuckets: 0, remainingQty: 0 };
       addEvent('CLOSED', `Trade CLOSED — Total P&L ₹${finalPnl}`);
     }
