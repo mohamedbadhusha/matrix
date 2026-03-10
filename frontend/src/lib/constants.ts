@@ -6,6 +6,7 @@ export const MOMENTUM_DELTA: Record<Protocol, { T1: number; T2: number; T3: numb
   HALF_AND_HALF:  { T1: 20, T2: 40,  T3: 70  },
   DOUBLE_SCALPER: { T1: 25, T2: 50,  T3: 80  },
   SINGLE_SCALPER: { T1: 12, T2: 24,  T3: 36  },
+  TRAIL_RUNNER:   { T1: 15, T2: 30,  T3: 50  },
 };
 
 // ── Protocol bucket counts ──────────────────────────────────────────────
@@ -14,6 +15,7 @@ export const PROTOCOL_BUCKETS: Record<Protocol, number> = {
   HALF_AND_HALF:  2,
   DOUBLE_SCALPER: 2,
   SINGLE_SCALPER: 1,
+  TRAIL_RUNNER:   1,
 };
 
 // ── Lot sizes (NSE/BSE F&O) ──────────────────────────────────────────────
@@ -81,6 +83,13 @@ export const PROTOCOL_META: Record<Protocol, {
     glowClass: 'glow-green',
     tagClass: 'bg-green-400/10 text-green-400 border-green-400/30',
   },
+  TRAIL_RUNNER: {
+    label: 'Trail Runner',
+    description: '1 bucket • Infinity — T1 locks SL to entry, trails until SL hit',
+    color: '#F59E0B',
+    glowClass: 'glow-orange',
+    tagClass: 'bg-amber-400/10 text-amber-400 border-amber-400/30',
+  },
 };
 
 // ── Supported symbols ────────────────────────────────────────────────────
@@ -111,13 +120,13 @@ export const TIER_FEATURES: Record<UserTier, {
     maxLots: 5,
   },
   pro: {
-    protocols: ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'],
+    protocols: ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'],
     copyTrading: true,
     manualTargets: true,
     maxLots: 20,
   },
   elite: {
-    protocols: ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'],
+    protocols: ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'],
     copyTrading: true,
     manualTargets: true,
     maxLots: 50,

@@ -7,7 +7,8 @@ export type Protocol =
   | 'PROTECTOR'
   | 'HALF_AND_HALF'
   | 'DOUBLE_SCALPER'
-  | 'SINGLE_SCALPER';
+  | 'SINGLE_SCALPER'
+  | 'TRAIL_RUNNER';
 
 export type TradeStatus = 'ACTIVE' | 'CLOSED' | 'KILLED' | 'SL_HIT';
 export type TradeMode = 'PAPER' | 'LIVE';

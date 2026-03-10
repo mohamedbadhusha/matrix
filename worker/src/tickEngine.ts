@@ -7,6 +7,7 @@ import {
   handleHalfAndHalf,
   handleDoubleScalper,
   handleSingleScalper,
+  handleTrailRunner,
   TradeNode,
 } from './protocolHandlers';
 import { checkAndRenewTokens } from './tokenManager';
@@ -157,6 +158,9 @@ export class TickEngine {
               break;
             case 'SINGLE_SCALPER':
               await handleSingleScalper(this.supabase, trade, ltp);
+              break;
+            case 'TRAIL_RUNNER':
+              await handleTrailRunner(this.supabase, trade, ltp);
               break;
           }
         } finally {

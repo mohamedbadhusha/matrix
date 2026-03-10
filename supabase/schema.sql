@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS public.trade_nodes (
   exchange            TEXT NOT NULL DEFAULT 'NSE_FNO',
 
   -- Protocol & mode
-  protocol            TEXT NOT NULL CHECK (protocol IN ('PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER')),
+  protocol            TEXT NOT NULL CHECK (protocol IN ('PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER')),
   target_mode         TEXT NOT NULL DEFAULT 'MOMENTUM' CHECK (target_mode IN ('MOMENTUM', 'MANUAL')),
   mode                TEXT NOT NULL DEFAULT 'PAPER' CHECK (mode IN ('LIVE', 'PAPER')),
 
@@ -1235,4 +1235,11 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_postback_l
 -- 2026-03-10 | Add trailing SL step for Half & Half protocol
 ALTER TABLE public.trade_nodes
   ADD COLUMN IF NOT EXISTS trail_step INT NOT NULL DEFAULT 0;
+
+-- 2026-03-10 | Add TRAIL_RUNNER protocol
+ALTER TABLE public.trade_nodes
+  DROP CONSTRAINT IF EXISTS trade_nodes_protocol_check;
+ALTER TABLE public.trade_nodes
+  ADD CONSTRAINT trade_nodes_protocol_check
+  CHECK (protocol IN ('PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'));
 -- ============================================================

@@ -179,6 +179,39 @@ function runProtocolTick(trade: SimTrade, ltp: number): SimTrade {
     }
   }
 
+  // ── TRAIL_RUNNER ────────────────────────────────────────────────────────
+  // T1 → SL snaps to entry + trailing activates; T2/T3 = milestones; runs to infinity
+  if (t.protocol === 'TRAIL_RUNNER') {
+    // Per-tick trailing SL: after T1, SL = entry + floor((ltp − t1) / trailStep) * trailStep
+    if (t.t1Hit && t.trailStep > 0 && ltp > t.t1) {
+      const gain = ltp - t.t1;
+      const steppedGain = Math.floor(gain / t.trailStep) * t.trailStep;
+      const trailSl = Math.round((t.entryPrice + steppedGain) * 100) / 100;
+      if (trailSl > t.sl) {
+        addEvent('SL_TRAILED', `SL trailed to ₹${trailSl}`);
+        t = { ...t, sl: trailSl };
+      }
+    }
+    // T1 → mark, SL → entry
+    if (!t.t1Hit && ltp >= t.t1) {
+      addEvent('T1_HIT', `T1 ₹${t.t1} hit — SL → entry ₹${t.entryPrice}, trailing active`);
+      addEvent('SL_TRAILED', `SL set to breakeven ₹${t.entryPrice}`);
+      t = { ...t, t1Hit: true, sl: t.entryPrice };
+    }
+    // T2 → milestone only
+    if (t.t1Hit && !t.t2Hit && ltp >= t.t2) {
+      addEvent('T2_HIT', `T2 ₹${t.t2} milestone — trailing continues`);
+      t = { ...t, t2Hit: true };
+    }
+    // T3 → milestone only
+    if (t.t1Hit && t.t2Hit && !t.t3Hit && ltp >= t.t3) {
+      addEvent('T3_HIT', `T3 ₹${t.t3} milestone — trailing continues (no exit)`);
+      t = { ...t, t3Hit: true };
+    }
+    // SL hit → exit all
+    // (already handled by the top-level SL check before protocol logic)
+  }
+
   return t;
 }
 
@@ -217,7 +250,7 @@ function buildSimTrade(
   };
 }
 
-const PROTOCOLS: Protocol[] = ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'];
+const PROTOCOLS: Protocol[] = ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'];
 
 const EVENT_ICON: Record<SimEvent['type'], { icon: React.ReactNode; color: string }> = {
   ENTRY:      { icon: <Zap size={12} />,          color: 'text-accent-cyan' },
@@ -688,6 +721,7 @@ export default function Simulator() {
                 ['HALF_AND_HALF',  '2', 'Mark only + SL→entry',     'Exit 1 bucket + SL→T1', 'Exit remaining 1 bucket', 'Exit all remaining'],
                 ['DOUBLE_SCALPER', '2', 'Exit 1 bucket + SL→entry', 'Exit 2nd bucket (scalp)', 'Guard exit', 'Exit all remaining'],
                 ['SINGLE_SCALPER', '1', 'SL→entry (hold)',           'SL→T1 (hold)',    'Exit ALL lots at once', 'Exit all remaining'],
+                ['TRAIL_RUNNER',   '1', 'SL→entry + trail ON',       'Milestone (hold)', 'Milestone (hold)',     'Exit all remaining'],
               ] as const).map(([p, b, t1, t2, t3, sl]) => {
                 const meta = PROTOCOL_META[p as Protocol];
                 return (

@@ -11,7 +11,7 @@ export interface TradeNode {
   trading_symbol: string;
   security_id: string | null;
   exchange: string;
-  protocol: 'PROTECTOR' | 'HALF_AND_HALF' | 'DOUBLE_SCALPER' | 'SINGLE_SCALPER';
+  protocol: 'PROTECTOR' | 'HALF_AND_HALF' | 'DOUBLE_SCALPER' | 'SINGLE_SCALPER' | 'TRAIL_RUNNER';
   target_mode: 'MOMENTUM' | 'MANUAL';
   mode: 'LIVE' | 'PAPER';
   entry_price: number;
@@ -403,6 +403,63 @@ export async function handleSingleScalper(
       sl_order_id: null,
     });
     logger.info('SINGLE_SCALPER T3 — all lots exited', { id: trade.id, finalPnl });
+    return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TRAIL_RUNNER (1 bucket — runs to infinity)
+//   T1 → SL snaps to entry, trailing SL activates (SL = entry + gain from T1)
+//   T2 → milestone only (no exit, trailing continues)
+//   T3 → milestone only (no exit, trailing continues)
+//   SL hit → exit all remaining at market
+// ═══════════════════════════════════════════════════════════════════
+export async function handleTrailRunner(
+  supabase: SupabaseClient,
+  trade: TradeNode,
+  ltp: number,
+) {
+  const trailStep = trade.trail_step ?? 0;
+  let currentSl = trade.sl;
+
+  // Trailing SL: after T1, SL = entry + floor((ltp - t1) / trailStep) * trailStep
+  if (trade.t1_hit && trailStep > 0 && ltp > trade.t1) {
+    const gain = ltp - trade.t1;
+    const steppedGain = Math.floor(gain / trailStep) * trailStep;
+    const trailSl = Math.round((trade.entry_price + steppedGain) * 100) / 100;
+    if (trailSl > currentSl) {
+      currentSl = trailSl;
+      await updateTrade(supabase, trade.id, { sl: currentSl });
+      logger.info('TRAIL_RUNNER trailing SL raised', { id: trade.id, newSl: currentSl, ltp });
+    }
+  }
+
+  await updateTrade(supabase, trade.id, { ltp });
+
+  // SL hit — exit all remaining at market
+  if (ltp <= currentSl) {
+    await closeTrade(supabase, { ...trade, sl: currentSl }, ltp, 'SL_HIT');
+    return;
+  }
+
+  // T1 — snap SL to entry, activate trailing
+  if (!trade.t1_hit && ltp >= trade.t1) {
+    await updateTrade(supabase, trade.id, { t1_hit: true, sl: trade.entry_price });
+    logger.info('TRAIL_RUNNER T1 — SL → entry, trailing active', { id: trade.id });
+    return;
+  }
+
+  // T2 — milestone only
+  if (trade.t1_hit && !trade.t2_hit && ltp >= trade.t2) {
+    await updateTrade(supabase, trade.id, { t2_hit: true });
+    logger.info('TRAIL_RUNNER T2 milestone', { id: trade.id });
+    return;
+  }
+
+  // T3 — milestone only
+  if (trade.t1_hit && trade.t2_hit && !trade.t3_hit && ltp >= trade.t3) {
+    await updateTrade(supabase, trade.id, { t3_hit: true });
+    logger.info('TRAIL_RUNNER T3 milestone', { id: trade.id });
     return;
   }
 }

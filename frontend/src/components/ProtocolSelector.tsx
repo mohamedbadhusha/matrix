@@ -11,7 +11,7 @@ interface ProtocolSelectorProps {
   allowedOverride?: Protocol[];
 }
 
-const protocols: Protocol[] = ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'];
+const protocols: Protocol[] = ['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'];
 
 export default function ProtocolSelector({ value, onChange, tier, allowedOverride }: ProtocolSelectorProps) {
   const allowed = allowedOverride ?? TIER_FEATURES[tier].protocols;

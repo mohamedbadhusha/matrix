@@ -56,7 +56,7 @@ export default function Deploy() {
   const tier = profile?.tier ?? 'free';
   const allowedProtocols = profile
     ? TIER_FEATURES[profile.tier].protocols
-    : (['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'] as Protocol[]);
+    : (['PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'] as Protocol[]);
   const canManualTargets = TIER_FEATURES[tier].manualTargets;
   const dailyLimit = DAILY_TRADE_LIMITS[tier];
   const tradesUsed = profile?.daily_trades_used ?? 0;
@@ -219,7 +219,7 @@ export default function Deploy() {
         status: 'ACTIVE',
         booked_pnl: 0,
         is_processing: false,
-        trail_step: form.protocol === 'HALF_AND_HALF' ? parseInt(form.trailStep) || 0 : 0,
+        trail_step: (form.protocol === 'HALF_AND_HALF' || form.protocol === 'TRAIL_RUNNER') ? parseInt(form.trailStep) || 0 : 0,
       });
 
       if (error) throw new Error(error.message);
@@ -392,7 +392,7 @@ export default function Deploy() {
           </div>
 
           {/* Trail Step — only for Half & Half */}
-          {form.protocol === 'HALF_AND_HALF' && (
+          {(form.protocol === 'HALF_AND_HALF' || form.protocol === 'TRAIL_RUNNER') && (
             <div className="col-span-2">
               <label className="block text-xs text-muted mb-1.5">
                 Trailing SL Step <span className="text-muted/50">(points after T1 hit)</span>
@@ -416,7 +416,7 @@ export default function Deploy() {
               </div>
               {parseInt(form.trailStep) > 0 && (
                 <p className="text-[10px] text-accent-cyan/60 mt-1">
-                  After T1: SL will trail {form.trailStep} pts below LTP on every tick
+                  After T1: SL → entry, then trails {form.trailStep} pts above entry per step
                 </p>
               )}
             </div>

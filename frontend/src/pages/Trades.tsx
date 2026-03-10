@@ -8,7 +8,7 @@ import { X } from 'lucide-react';
 
 const ALL = '__ALL__';
 
-const PROTOCOLS: (Protocol | typeof ALL)[] = [ALL, 'PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER'];
+const PROTOCOLS: (Protocol | typeof ALL)[] = [ALL, 'PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'];
 const STATUSES: (TradeStatus | typeof ALL)[] = [ALL, 'ACTIVE', 'CLOSED', 'SL_HIT', 'KILLED'];
 const MODES: (TradeMode | typeof ALL)[] = [ALL, 'LIVE', 'PAPER'];
 
@@ -87,6 +87,7 @@ export default function Trades() {
               HALF_AND_HALF: 'text-accent-purple border-accent-purple/40 bg-accent-purple/10',
               DOUBLE_SCALPER: 'text-warning border-warning/40 bg-warning/10',
               SINGLE_SCALPER: 'text-profit border-profit/40 bg-profit/10',
+              TRAIL_RUNNER:   'text-amber-400 border-amber-400/40 bg-amber-400/10',
             }}
           />
           {/* Status filter */}
