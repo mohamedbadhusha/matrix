@@ -138,10 +138,11 @@ export default function Login() {
               </thead>
               <tbody>
                 {[
-                  ['Protector',      'Exit 1 bucket + SL→entry', 'No exit + SL→T1',         'Exit ALL 2 remaining'],
-                  ['Half & Half',    'Exit 1 bucket + SL→entry', 'Milestone only',           'Exit remaining 1 bucket'],
-                  ['Dbl Scalper',    'Exit 1 bucket (scalp)',    'Exit 2nd bucket (scalp)',  'Guard exit'],
-                  ['Sngl Scalper',   'SL→entry (hold)',          'SL→T1 (hold)',             'Exit ALL lots'],
+                  ['Protector',      'Exit 1/3 + SL→entry',         'Exit 1/3 + SL→T1',       'Exit last 1/3'],
+                  ['Half & Half',    'Exit 50% + SL→entry + trail', 'Milestone only',          'Exit remaining 50%'],
+                  ['Dbl Scalper',    'Exit 50% + SL→entry',         'Exit remaining 50%',     '—'],
+                  ['Sngl Scalper',   'SL→entry (hold)',              'SL→T1 (hold)',            'Exit ALL lots'],
+                  ['Trail Runner',   'SL→entry + trail ON',         'Milestone (trail cont.)', 'Milestone (trail cont.)'],
                 ].map(([p, t1, t2, t3]) => (
                   <tr key={p} className="border-b border-border/20">
                     <td className="py-1.5 pr-3 text-accent-cyan/70 font-semibold whitespace-nowrap">{p}</td>

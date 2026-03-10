@@ -716,11 +716,11 @@ export default function Simulator() {
             </thead>
             <tbody className="space-y-1">
               {([
-                ['PROTECTOR',      '3', 'Exit 1 bucket + SL→entry', 'No exit + SL→T1', 'Exit ALL 2 remaining', 'Exit all remaining'],
-                ['HALF_AND_HALF',  '2', 'Exit 1 bucket + SL→entry',  'Milestone only',         'Exit remaining 1 bucket', 'Exit all remaining'],
-                ['DOUBLE_SCALPER', '2', 'Exit 1 bucket + SL→entry', 'Exit 2nd bucket (scalp)', 'Guard exit', 'Exit all remaining'],
-                ['SINGLE_SCALPER', '1', 'SL→entry (hold)',           'SL→T1 (hold)',    'Exit ALL lots at once', 'Exit all remaining'],
-                ['TRAIL_RUNNER',   '1', 'SL→entry + trail ON',       'Milestone (hold)', 'Milestone (hold)',     'Exit all remaining'],
+                ['PROTECTOR',      '3', 'Exit 1/3 + SL→entry',          'Exit 1/3 + SL→T1',        'Exit last 1/3',            'Exit all remaining'],
+                ['HALF_AND_HALF',  '2', 'Exit 50% + SL→entry + trail',   'Milestone only',           'Exit remaining 50%',       'Exit all remaining'],
+                ['DOUBLE_SCALPER', '2', 'Exit 50% + SL→entry',           'Exit remaining 50%',       '— (closed at T2)',         'Exit all remaining'],
+                ['SINGLE_SCALPER', '1', 'SL→entry (hold)',                'SL→T1 (hold)',             'Exit ALL lots',            'Exit all remaining'],
+                ['TRAIL_RUNNER',   '1', 'SL→entry + trail ON',            'Milestone (trail cont.)',  'Milestone (trail cont.)',  'Exit all remaining'],
               ] as const).map(([p, b, t1, t2, t3, sl]) => {
                 const meta = PROTOCOL_META[p as Protocol];
                 return (
