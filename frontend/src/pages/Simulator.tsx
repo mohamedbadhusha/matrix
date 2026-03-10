@@ -218,7 +218,7 @@ export default function Simulator() {
   const [parsedSignal, setParsedSignal] = useState<ParsedSignal | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [protocol, setProtocol] = useState<Protocol>('PROTECTOR');
-  const [lots, setLots] = useState(1);
+  const [lots, setLots] = useState(3); // Protector default = 3 (1 per bucket)
   const [targetMode, setTargetMode] = useState<'MANUAL' | 'MOMENTUM'>('MANUAL');
   const [trade, setTrade] = useState<SimTrade | null>(null);
   const [ltpInput, setLtpInput] = useState('');
@@ -358,7 +358,12 @@ export default function Simulator() {
                 return (
                   <button
                     key={p}
-                    onClick={() => setProtocol(p)}
+                    onClick={() => {
+                      setProtocol(p);
+                      // Snap lots to nearest multiple of new bucket count
+                      const b = PROTOCOL_BUCKETS[p];
+                      setLots(prev => Math.max(b, Math.ceil(prev / b) * b));
+                    }}
                     className={cn(
                       'rounded-lg border p-2.5 text-left transition-all',
                       selected
@@ -379,12 +384,19 @@ export default function Simulator() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted mb-1 block">Lots</label>
+                <label className="text-xs text-muted mb-1 block">
+                  Lots
+                  <span className="ml-1 text-[10px] text-accent-cyan/70">(must be × {PROTOCOL_BUCKETS[protocol]})</span>
+                </label>
                 <input
-                  type="number" min={1} max={50}
+                  type="number" min={PROTOCOL_BUCKETS[protocol]} step={PROTOCOL_BUCKETS[protocol]} max={50}
                   className="input-base"
                   value={lots}
-                  onChange={e => setLots(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={e => {
+                    const b = PROTOCOL_BUCKETS[protocol];
+                    const raw = Math.max(b, parseInt(e.target.value) || b);
+                    setLots(Math.ceil(raw / b) * b);
+                  }}
                 />
               </div>
               <div>

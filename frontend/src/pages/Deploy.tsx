@@ -14,7 +14,7 @@ import {
   canDeployTrade,
   cn,
 } from '@/lib/utils';
-import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META } from '@/lib/constants';
+import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META, PROTOCOL_BUCKETS } from '@/lib/constants';
 import type { Protocol, TargetMode, TradeMode, ParsedSignal, DeployTradeInput } from '@/types';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronRight, Info, Zap } from 'lucide-react';
@@ -275,7 +275,11 @@ export default function Deploy() {
               toast.error(`${p} requires Pro or Elite tier`);
               return;
             }
-            setForm((f) => ({ ...f, protocol: p }));
+            // Snap lots to nearest multiple of new bucket count
+            const b = PROTOCOL_BUCKETS[p];
+            const currentLots = parseInt(form.lots) || b;
+            const snappedLots = Math.max(b, Math.ceil(currentLots / b) * b);
+            setForm((f) => ({ ...f, protocol: p, lots: String(snappedLots) }));
           }}
           tier={tier}
           allowedOverride={allowedProtocols}
@@ -368,14 +372,20 @@ export default function Deploy() {
           <div>
             <label className="block text-xs text-muted mb-1.5">
               Lots <span className="text-muted/50">(1 lot = {lotSize} units)</span>
+              <span className="ml-1 text-[10px] text-accent-cyan/70">· must be × {PROTOCOL_BUCKETS[form.protocol]}</span>
             </label>
             <input
               type="number"
-              min="1"
+              min={PROTOCOL_BUCKETS[form.protocol]}
+              step={PROTOCOL_BUCKETS[form.protocol]}
               max={TIER_FEATURES[tier].maxLots}
               className="input-base font-mono"
               value={form.lots}
-              onChange={(e) => setForm((f) => ({ ...f, lots: e.target.value }))}
+              onChange={(e) => {
+                const b = PROTOCOL_BUCKETS[form.protocol];
+                const raw = Math.max(b, parseInt(e.target.value) || b);
+                setForm((f) => ({ ...f, lots: String(Math.ceil(raw / b) * b) }));
+              }}
             />
           </div>
 
