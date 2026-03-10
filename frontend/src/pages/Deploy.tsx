@@ -398,7 +398,7 @@ export default function Deploy() {
                 Trailing SL Step <span className="text-muted/50">(points after T1 hit)</span>
               </label>
               <div className="flex gap-1.5 flex-wrap">
-                {[0, 1, 2, 3, 5, 7, 10, 20].map(s => (
+                {[0, ...Array.from({length: 20}, (_, i) => i + 1)].map(s => (
                   <button
                     key={s}
                     type="button"

@@ -457,7 +457,7 @@ export default function Simulator() {
                     <span className="ml-1 text-[10px] text-accent-cyan/70">(pts after T1)</span>
                   </label>
                   <div className="flex gap-1 flex-wrap">
-                    {[0, 1, 2, 3, 5, 7, 10, 20].map(s => (
+                    {[0, ...Array.from({length: 20}, (_, i) => i + 1)].map(s => (
                       <button
                         key={s}
                         onClick={() => setTrailStep(s)}
