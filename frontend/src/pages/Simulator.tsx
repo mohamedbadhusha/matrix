@@ -270,7 +270,7 @@ export default function Simulator() {
   const [protocol, setProtocol] = useState<Protocol>('PROTECTOR');
   const [lots, setLots] = useState(3); // Protector default = 3 (1 per bucket)
   const [targetMode, setTargetMode] = useState<'MANUAL' | 'MOMENTUM'>('MANUAL');
-  const [trailStep, setTrailStep] = useState(5); // trailing SL step for Half & Half
+  const [trailStep, setTrailStep] = useState(0); // trailing SL step (0 = Off)
   const [trade, setTrade] = useState<SimTrade | null>(null);
   const [ltpInput, setLtpInput] = useState('');
   const [stepSize, setStepSize] = useState(1);
@@ -450,14 +450,14 @@ export default function Simulator() {
                   }}
                 />
               </div>
-              {protocol === 'HALF_AND_HALF' && (
+              {(protocol === 'HALF_AND_HALF' || protocol === 'TRAIL_RUNNER') && (
                 <div>
                   <label className="text-xs text-muted mb-1 block">
                     Trail SL Step
                     <span className="ml-1 text-[10px] text-accent-cyan/70">(pts after T1)</span>
                   </label>
                   <div className="flex gap-1 flex-wrap">
-                    {[0, 1, 2, 3, 5, 7, 10].map(s => (
+                    {[0, 1, 2, 3, 5, 7, 10, 20].map(s => (
                       <button
                         key={s}
                         onClick={() => setTrailStep(s)}

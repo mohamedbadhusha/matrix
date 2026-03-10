@@ -35,7 +35,7 @@ const defaultForm = {
   t2: '',
   t3: '',
   lots: '1',
-  trailStep: '5', // trailing SL step for Half & Half
+  trailStep: '0', // trailing SL step for Half & Half
 };
 
 export default function Deploy() {
@@ -398,7 +398,7 @@ export default function Deploy() {
                 Trailing SL Step <span className="text-muted/50">(points after T1 hit)</span>
               </label>
               <div className="flex gap-1.5 flex-wrap">
-                {[0, 1, 2, 3, 5, 7, 10].map(s => (
+                {[0, 1, 2, 3, 5, 7, 10, 20].map(s => (
                   <button
                     key={s}
                     type="button"
