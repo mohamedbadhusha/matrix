@@ -78,6 +78,7 @@ export default function Deploy() {
 
   const [tab, setTab] = useState<Tab>('signal');
   const [form, setForm] = useState(defaultForm);
+  const [strikeCenter, setStrikeCenter] = useState<number>(SYMBOL_DEFAULT_LEVEL['NIFTY']);
   const [parsedSignal, setParsedSignal] = useState<ParsedSignal | null>(null);
   const [loading, setLoading] = useState(false);
   const [showLiveWarning, setShowLiveWarning] = useState(false);
@@ -362,7 +363,11 @@ export default function Deploy() {
             <select
               className="input-base"
               value={form.symbol}
-              onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value, strike: '' }))}
+              onChange={(e) => {
+                const sym = e.target.value;
+                setForm((f) => ({ ...f, symbol: sym, strike: '' }));
+                setStrikeCenter(SYMBOL_DEFAULT_LEVEL[sym] ?? SYMBOL_DEFAULT_LEVEL['NIFTY']);
+              }}
             >
               {Object.entries(SYMBOL_GROUPS).map(([group, syms]) => (
                 <optgroup key={group} label={group}>
@@ -393,6 +398,19 @@ export default function Deploy() {
             ) : (
               /* Equity index — dropdown of strikes + CE/PE toggle */
               <div className="space-y-2">
+                {/* Index level — editable so user can centre around today’s price */}
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-muted whitespace-nowrap">Index level</label>
+                  <input
+                    type="number"
+                    step={STRIKE_STEP[form.symbol] ?? 50}
+                    className="input-base font-mono text-sm w-32"
+                    value={strikeCenter || ''}
+                    onChange={(e) => setStrikeCenter(Number(e.target.value))}
+                    placeholder={String(SYMBOL_DEFAULT_LEVEL[form.symbol] ?? 22000)}
+                  />
+                  <span className="text-[10px] text-muted/50">← type today’s index price to centre strikes</span>
+                </div>
                 {/* CE / PE row */}
                 <div className="flex gap-2">
                   {(['CE', 'PE'] as const).map((type) => {
@@ -430,7 +448,7 @@ export default function Deploy() {
                   }}
                 >
                   <option value="">Select strike…</option>
-                  {genStrikes(form.symbol, SYMBOL_DEFAULT_LEVEL[form.symbol] ?? 22000).map((s) => (
+                  {genStrikes(form.symbol, strikeCenter || SYMBOL_DEFAULT_LEVEL[form.symbol] || 22000).map((s) => (
                     <option key={s} value={String(s)}>{s}</option>
                   ))}
                 </select>
