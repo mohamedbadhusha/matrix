@@ -28,6 +28,8 @@ export const LOT_SIZES: Record<string, number> = {
   BANKEX:     15,
   CRUDEOIL:   100,  // MCX — 100 barrels per lot
   NATURALGAS: 1250, // MCX — 1250 mmBtu per lot
+  CRUDEOILM:   10,  // MCX Mini — 10 barrels per lot
+  NATGASM:    250,  // MCX Mini — 250 mmBtu per lot
 };
 
 // ── Daily trade limits by tier ───────────────────────────────────────────
@@ -95,16 +97,17 @@ export const PROTOCOL_META: Record<Protocol, {
 };
 
 // ── Supported symbols ────────────────────────────────────────────────────
-export const SYMBOLS = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX', 'CRUDEOIL', 'NATURALGAS'] as const;
+export const SYMBOLS = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX', 'CRUDEOIL', 'NATURALGAS', 'CRUDEOILM', 'NATGASM'] as const;
 export type Symbol = typeof SYMBOLS[number];
 
 /** Symbols traded on MCX (commodity futures) */
-export const MCX_SYMBOLS = new Set<string>(['CRUDEOIL', 'NATURALGAS']);
+export const MCX_SYMBOLS = new Set<string>(['CRUDEOIL', 'NATURALGAS', 'CRUDEOILM', 'NATGASM']);
 
 /** Display groups for the symbol selector */
 export const SYMBOL_GROUPS: Record<string, readonly string[]> = {
   'Indices': ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX'],
-  'Commodities (MCX)': ['CRUDEOIL', 'NATURALGAS'],
+  'Commodities MCX': ['CRUDEOIL', 'NATURALGAS'],
+  'Mini Commodities MCX': ['CRUDEOILM', 'NATGASM'],
 };
 
 // ── Exchange map ─────────────────────────────────────────────────────────
@@ -117,6 +120,8 @@ export const SYMBOL_EXCHANGE: Record<string, string> = {
   BANKEX:     'BSE_FNO',
   CRUDEOIL:   'MCX',
   NATURALGAS: 'MCX',
+  CRUDEOILM:  'MCX',
+  NATGASM:    'MCX',
 };
 
 // ── Per-symbol momentum deltas (override for MCX commodities) ───────────────
@@ -130,6 +135,21 @@ export const SYMBOL_MOMENTUM_DELTA: Partial<Record<string, Record<Protocol, { T1
     TRAIL_RUNNER:   { T1: 50,  T2: 100, T3: 150 },
   },
   NATURALGAS: {
+    PROTECTOR:      { T1:  5,  T2:  10, T3:  15 },
+    HALF_AND_HALF:  { T1:  6,  T2:  12, T3:  18 },
+    DOUBLE_SCALPER: { T1:  7,  T2:  15, T3:  20 },
+    SINGLE_SCALPER: { T1:  4,  T2:   8, T3:  12 },
+    TRAIL_RUNNER:   { T1:  5,  T2:  10, T3:  15 },
+  },
+  // Mini contracts share the same price-per-unit scale as their full counterparts
+  CRUDEOILM: {
+    PROTECTOR:      { T1: 50,  T2: 100, T3: 150 },
+    HALF_AND_HALF:  { T1: 60,  T2: 120, T3: 180 },
+    DOUBLE_SCALPER: { T1: 70,  T2: 150, T3: 200 },
+    SINGLE_SCALPER: { T1: 40,  T2:  80, T3: 120 },
+    TRAIL_RUNNER:   { T1: 50,  T2: 100, T3: 150 },
+  },
+  NATGASM: {
     PROTECTOR:      { T1:  5,  T2:  10, T3:  15 },
     HALF_AND_HALF:  { T1:  6,  T2:  12, T3:  18 },
     DOUBLE_SCALPER: { T1:  7,  T2:  15, T3:  20 },
