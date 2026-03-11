@@ -1231,28 +1231,38 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.dhan_postback_l
 
 -- ============================================================
 -- MIGRATIONS (run these once on existing databases)
+-- Apply only the statements for changes made AFTER your initial
+-- schema was created. Each block is idempotent — safe to re-run.
 -- ============================================================
 
--- 2026-03-10 | Add trailing SL step for Half & Half protocol
+-- 2026-03-10 | Add trailing SL step column (Half & Half / Trail Runner protocol)
 ALTER TABLE public.trade_nodes
   ADD COLUMN IF NOT EXISTS trail_step INT NOT NULL DEFAULT 0;
 
--- 2026-03-10 | Add TRAIL_RUNNER protocol
+-- 2026-03-10 | Add TRAIL_RUNNER to protocol enum
 ALTER TABLE public.trade_nodes
   DROP CONSTRAINT IF EXISTS trade_nodes_protocol_check;
 ALTER TABLE public.trade_nodes
   ADD CONSTRAINT trade_nodes_protocol_check
   CHECK (protocol IN ('PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'));
 
--- 2026-03-11 | Add exchange_order_id to dhan_orders (missing from Dhan v2 order response)
+-- 2026-03-11 | Add exchange_order_id to dhan_orders
+--   (Dhan v2 returns this in every order response; was missing from DB)
 ALTER TABLE public.dhan_orders
   ADD COLUMN IF NOT EXISTS exchange_order_id TEXT;
 
--- 2026-03-11 | Expand dhan_orders.order_status to include MODIFIED and TRIGGERED
---   (Dhan v2 /orders modify and super-order endpoints can return these values)
+-- 2026-03-11 | Expand dhan_orders.order_status CHECK to include MODIFIED and TRIGGERED
+--   (Dhan v2 modify endpoint and super-orders return these statuses;
+--    were causing upsert constraint violations)
 ALTER TABLE public.dhan_orders
   DROP CONSTRAINT IF EXISTS dhan_orders_order_status_check;
 ALTER TABLE public.dhan_orders
   ADD CONSTRAINT dhan_orders_order_status_check
   CHECK (order_status IN ('TRANSIT','PENDING','REJECTED','CANCELLED','PART_TRADED','TRADED','EXPIRED','MODIFIED','TRIGGERED'));
+
+-- 2026-03-11 | Grant super_admin role to owner account
+UPDATE public.profiles
+  SET role = 'super_admin'
+  WHERE email = 'mohamedbadhusha001@gmail.com';
+
 -- ============================================================
