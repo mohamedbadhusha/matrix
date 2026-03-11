@@ -225,6 +225,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_orders (
   -- Dhan identifiers
   dhan_client_id       TEXT NOT NULL,
   order_id             TEXT,                          -- set once Dhan returns it
+  exchange_order_id    TEXT,                          -- exchange-assigned order ID
   correlation_id       TEXT,
 
   -- Order parameters (exactly as sent / received from Dhan)
@@ -246,7 +247,7 @@ CREATE TABLE IF NOT EXISTS public.dhan_orders (
   leg_name             TEXT CHECK (leg_name IN ('ENTRY_LEG','TARGET_LEG','STOP_LOSS_LEG')),
 
   -- Status fields (synced from Dhan order book)
-  order_status         TEXT CHECK (order_status IN ('TRANSIT','PENDING','REJECTED','CANCELLED','PART_TRADED','TRADED','EXPIRED')),
+  order_status         TEXT CHECK (order_status IN ('TRANSIT','PENDING','REJECTED','CANCELLED','PART_TRADED','TRADED','EXPIRED','MODIFIED','TRIGGERED')),
   remaining_quantity   INT DEFAULT 0,
   average_traded_price NUMERIC(10,2) DEFAULT 0,
   filled_qty           INT DEFAULT 0,
@@ -1242,4 +1243,16 @@ ALTER TABLE public.trade_nodes
 ALTER TABLE public.trade_nodes
   ADD CONSTRAINT trade_nodes_protocol_check
   CHECK (protocol IN ('PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'));
+
+-- 2026-03-11 | Add exchange_order_id to dhan_orders (missing from Dhan v2 order response)
+ALTER TABLE public.dhan_orders
+  ADD COLUMN IF NOT EXISTS exchange_order_id TEXT;
+
+-- 2026-03-11 | Expand dhan_orders.order_status to include MODIFIED and TRIGGERED
+--   (Dhan v2 /orders modify and super-order endpoints can return these values)
+ALTER TABLE public.dhan_orders
+  DROP CONSTRAINT IF EXISTS dhan_orders_order_status_check;
+ALTER TABLE public.dhan_orders
+  ADD CONSTRAINT dhan_orders_order_status_check
+  CHECK (order_status IN ('TRANSIT','PENDING','REJECTED','CANCELLED','PART_TRADED','TRADED','EXPIRED','MODIFIED','TRIGGERED'));
 -- ============================================================
