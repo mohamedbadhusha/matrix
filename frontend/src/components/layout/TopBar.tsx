@@ -1,13 +1,15 @@
-import { Bell, Wifi, WifiOff, LogOut, User, ChevronDown } from 'lucide-react';
+import { Bell, LogOut, User, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useTrades } from '@/app/providers/TradeProvider';
+import { useTradeMode } from '@/app/providers/TradeModeProvider';
 import { formatCurrency, getPnlClass, cn } from '@/lib/utils';
 
 export default function TopBar() {
   const { profile, signOut } = useAuth();
   const { activeTrades, allTrades } = useTrades();
+  const { tradeMode, setTradeMode } = useTradeMode();
   const navigate = useNavigate();
 
   const [showProfile, setShowProfile] = useState(false);
@@ -31,34 +33,50 @@ export default function TopBar() {
 
   const todayPnl = allTrades
     .filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString())
-    .reduce((sum, t) => sum + t.booked_pnl, 0);
+    .reduce((sum, t) => {
+      const ltp = t.ltp ?? t.entry_price;
+      return sum + t.booked_pnl + (t.status === 'ACTIVE' ? (ltp - t.entry_price) * t.remaining_quantity : 0);
+    }, 0);
 
-  const liveTrades = activeTrades.filter((t) => t.mode === 'LIVE');
-  const paperTrades = activeTrades.filter((t) => t.mode === 'PAPER');
+  const liveTrades = activeTrades.filter((t) => t.mode === 'LIVE').length;
 
-  // Determine connection label: LIVE only if all active trades are LIVE,
-  // PAPER only if all are PAPER (or none), MIXED if both exist.
-  const connectionLabel =
-    activeTrades.length === 0
-      ? 'PAPER'
-      : liveTrades.length > 0 && paperTrades.length === 0
-      ? 'LIVE'
-      : liveTrades.length === 0
-      ? 'PAPER'
-      : 'MIXED';
-
-  const isLive = connectionLabel === 'LIVE';
-  const isMixed = connectionLabel === 'MIXED';
+  const MODE_OPTIONS = [
+    { value: 'LIVE',  label: 'Live',  activeClass: 'bg-profit/15 text-profit border border-profit/30' },
+    { value: 'ALL',   label: 'All',   activeClass: 'bg-panel-dark text-foreground border border-border' },
+    { value: 'PAPER', label: 'Sim',   activeClass: 'bg-warning/15 text-warning border border-warning/30' },
+  ] as const;
 
   return (
-    <header className="h-14 bg-panel-dark border-b border-border flex items-center justify-between px-6 flex-shrink-0">
-      {/* Left: active trades indicator */}
+    <header className="h-14 bg-panel-dark border-b border-border flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+      {/* Left: mode switcher + active trades count */}
       <div className="flex items-center gap-3">
+        {/* Global mode switcher */}
+        <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-panel-mid border border-border">
+          {MODE_OPTIONS.map(({ value, label, activeClass }) => (
+            <button
+              key={value}
+              onClick={() => setTradeMode(value)}
+              className={cn(
+                'px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
+                tradeMode === value ? activeClass : 'text-muted hover:text-foreground',
+              )}
+              title={value === 'LIVE' ? 'Show only Live trades' : value === 'PAPER' ? 'Show only Simulation trades' : 'Show all trades'}
+            >
+              {value === 'LIVE' && tradeMode === 'LIVE' && (
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-profit mr-1.5 align-middle animate-pulse" />
+              )}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Active trades indicator */}
         {activeTrades.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className={liveTrades.length > 0 ? 'dot-live' : 'dot-paper'} />
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className={liveTrades > 0 ? 'dot-live' : 'dot-paper'} />
             <span className="text-xs text-muted">
-              {activeTrades.length} active {activeTrades.length === 1 ? 'trade' : 'trades'}
+              {activeTrades.length} active
+              {liveTrades > 0 && <span className="text-profit ml-1">{liveTrades}L</span>}
             </span>
           </div>
         )}
@@ -72,28 +90,6 @@ export default function TopBar() {
           <p className={cn('text-sm price', getPnlClass(todayPnl))}>
             {todayPnl >= 0 ? '+' : ''}{formatCurrency(todayPnl)}
           </p>
-        </div>
-
-        {/* Connection status badge */}
-        <div
-          className={cn(
-            'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs border',
-            isLive
-              ? 'bg-profit/10 text-profit border-profit/20'
-              : isMixed
-              ? 'bg-warning/10 text-warning border-warning/20'
-              : 'bg-border/30 text-muted border-border',
-          )}
-          title={
-            isLive
-              ? 'Broker connected — LIVE trading'
-              : isMixed
-              ? `Mixed: ${liveTrades.length} LIVE + ${paperTrades.length} PAPER trades`
-              : 'Paper / Simulation mode — no real orders'
-          }
-        >
-          {isLive || isMixed ? <Wifi size={12} /> : <WifiOff size={12} />}
-          <span className="hidden sm:inline">{connectionLabel}</span>
         </div>
 
         {/* Notifications */}

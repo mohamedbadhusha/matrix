@@ -18,6 +18,7 @@ import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META, PROTOCOL_BUC
 import type { Protocol, TargetMode, TradeMode, ParsedSignal, DeployTradeInput } from '@/types';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronRight, Info, Zap } from 'lucide-react';
+import { useTradeMode } from '@/app/providers/TradeModeProvider';
 
 type Tab = 'signal' | 'manual';
 
@@ -41,6 +42,7 @@ const defaultForm = {
 export default function Deploy() {
   const { profile } = useAuth();
   const { refetchTrades } = useTrades();
+  const { tradeMode } = useTradeMode();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,6 +54,13 @@ export default function Deploy() {
   const [brokerAccounts, setBrokerAccounts] = useState<{ id: string; client_id: string }[]>([]);
   const [selectedBroker, setSelectedBroker] = useState<string | null>(null);
   const [fromChain, setFromChain] = useState(false);
+
+  // Sync deploy mode with global switcher (LIVE → LIVE, PAPER/ALL → PAPER)
+  useEffect(() => {
+    if (tradeMode === 'LIVE' || tradeMode === 'PAPER') {
+      setForm((f) => ({ ...f, mode: tradeMode }));
+    }
+  }, [tradeMode]);
 
   const tier = profile?.tier ?? 'free';
   const allowedProtocols = profile

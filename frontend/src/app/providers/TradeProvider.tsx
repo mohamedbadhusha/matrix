@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useCallback,
   type ReactNode,
@@ -9,6 +10,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import type { TradeNode } from '@/types';
 import { useAuth } from './AuthProvider';
+import { useTradeMode } from './TradeModeProvider';
 
 interface TradeContextValue {
   activeTrades: TradeNode[];
@@ -23,9 +25,23 @@ const TradeContext = createContext<TradeContextValue | undefined>(undefined);
 
 export function TradeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [activeTrades, setActiveTrades] = useState<TradeNode[]>([]);
-  const [allTrades, setAllTrades] = useState<TradeNode[]>([]);
+  const { tradeMode } = useTradeMode();
+
+  // rawTrades holds every trade for this user (unfiltered by mode).
+  // activeTrades / allTrades are derived via useMemo and update instantly
+  // whenever tradeMode changes — no extra fetches needed.
+  const [rawTrades, setRawTrades] = useState<TradeNode[]>([]);
   const [loadingTrades, setLoadingTrades] = useState(false);
+
+  const allTrades = useMemo(
+    () => tradeMode === 'ALL' ? rawTrades : rawTrades.filter((t) => t.mode === tradeMode),
+    [rawTrades, tradeMode],
+  );
+
+  const activeTrades = useMemo(
+    () => allTrades.filter((t) => t.status === 'ACTIVE'),
+    [allTrades],
+  );
 
   const fetchTrades = useCallback(async () => {
     if (!user?.id) return;
@@ -38,9 +54,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        const trades = data as TradeNode[];
-        setAllTrades(trades);
-        setActiveTrades(trades.filter((t) => t.status === 'ACTIVE'));
+        setRawTrades(data as TradeNode[]);
       }
     } finally {
       setLoadingTrades(false);
@@ -50,24 +64,18 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const refetchTrades = fetchTrades;
 
   const deleteTrade = useCallback(async (id: string) => {
-    // Optimistically remove from UI
-    setAllTrades((prev) => prev.filter((t) => t.id !== id));
-    setActiveTrades((prev) => prev.filter((t) => t.id !== id));
+    setRawTrades((prev) => prev.filter((t) => t.id !== id));
     const { error } = await supabase.from('trade_nodes').delete().eq('id', id);
     if (error) {
-      // Revert — re-fetch so the trade reappears
       fetchTrades();
       console.error('[deleteTrade] DB delete failed:', error.message);
     }
   }, [fetchTrades]);
 
   const updateTrade = useCallback(async (id: string, updates: Partial<TradeNode>) => {
-    // Optimistically update UI
-    setAllTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
-    setActiveTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
+    setRawTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
     const { error } = await supabase.from('trade_nodes').update(updates).eq('id', id);
     if (error) {
-      // Revert on failure
       fetchTrades();
       console.error('[updateTrade] DB update failed:', error.message);
       throw error;
@@ -77,13 +85,10 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   // Initial fetch
   useEffect(() => {
     if (user?.id) fetchTrades();
-    else {
-      setActiveTrades([]);
-      setAllTrades([]);
-    }
+    else setRawTrades([]);
   }, [user?.id, fetchTrades]);
 
-  // Realtime subscription for live trade updates
+  // Realtime subscription
   useEffect(() => {
     if (!user?.id) return;
 
@@ -99,33 +104,19 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newTrade = payload.new as TradeNode;
-            setAllTrades((prev) => [newTrade, ...prev]);
-            if (newTrade.status === 'ACTIVE') {
-              setActiveTrades((prev) => [newTrade, ...prev]);
-            }
+            setRawTrades((prev) => [payload.new as TradeNode, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as TradeNode;
-            setAllTrades((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t)),
-            );
-            setActiveTrades((prev) => {
-              const filtered = prev.filter((t) => t.id !== updated.id);
-              if (updated.status === 'ACTIVE') return [updated, ...filtered];
-              return filtered;
-            });
+            setRawTrades((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
           } else if (payload.eventType === 'DELETE') {
             const deleted = payload.old as TradeNode;
-            setAllTrades((prev) => prev.filter((t) => t.id !== deleted.id));
-            setActiveTrades((prev) => prev.filter((t) => t.id !== deleted.id));
+            setRawTrades((prev) => prev.filter((t) => t.id !== deleted.id));
           }
         },
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
   return (

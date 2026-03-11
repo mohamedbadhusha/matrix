@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './providers/AuthProvider';
 import { TradeProvider } from './providers/TradeProvider';
+import { TradeModeProvider } from './providers/TradeModeProvider';
 import { Toaster } from 'sonner';
 
 // Pages
@@ -110,9 +111,11 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <TradeProvider>
-              <AppLayout />
-            </TradeProvider>
+            <TradeModeProvider>
+              <TradeProvider>
+                <AppLayout />
+              </TradeProvider>
+            </TradeModeProvider>
           </ProtectedRoute>
         }
       >

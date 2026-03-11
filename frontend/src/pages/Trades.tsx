@@ -3,14 +3,13 @@ import { useTrades } from '@/app/providers/TradeProvider';
 import { TradeCardCompact } from '@/components/TradeCard';
 import TradeCard from '@/components/TradeCard';
 import { cn, formatCurrency, getPnlClass } from '@/lib/utils';
-import type { Protocol, TradeStatus, TradeMode } from '@/types';
+import type { Protocol, TradeStatus } from '@/types';
 import { X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
 const ALL = '__ALL__';
 
 const PROTOCOLS: (Protocol | typeof ALL)[] = [ALL, 'PROTECTOR', 'HALF_AND_HALF', 'DOUBLE_SCALPER', 'SINGLE_SCALPER', 'TRAIL_RUNNER'];
 const STATUSES: (TradeStatus | typeof ALL)[] = [ALL, 'ACTIVE', 'CLOSED', 'SL_HIT', 'KILLED'];
-const MODES: (TradeMode | typeof ALL)[] = [ALL, 'LIVE', 'PAPER'];
 
 const PROTOCOL_LABELS: Record<string, string> = {
   PROTECTOR:      'Protector',
@@ -47,7 +46,6 @@ export default function Trades() {
 
   const [protocol, setProtocol] = useState<Protocol | typeof ALL>(ALL);
   const [status, setStatus]     = useState<TradeStatus | typeof ALL>(ALL);
-  const [mode, setMode]         = useState<TradeMode | typeof ALL>(ALL);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -58,13 +56,12 @@ export default function Trades() {
       .filter((t) => {
         if (protocol !== ALL && t.protocol !== protocol) return false;
         if (status  !== ALL && t.status   !== status)   return false;
-        if (mode    !== ALL && t.mode     !== mode)     return false;
         if (dateFrom && t.created_at < dateFrom) return false;
         if (dateTo   && t.created_at > dateTo + 'T23:59:59') return false;
         return true;
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [allTrades, protocol, status, mode, dateFrom, dateTo]);
+  }, [allTrades, protocol, status, dateFrom, dateTo]);
 
   // P&L: booked_pnl + unrealised for ACTIVE trades
   const totalPnl = filtered.reduce((sum, t) => {
@@ -78,12 +75,12 @@ export default function Trades() {
   const winRate     = closedCount > 0 ? ((wins / closedCount) * 100).toFixed(0) : '—';
 
   const clearFilters = () => {
-    setProtocol(ALL); setStatus(ALL); setMode(ALL);
+    setProtocol(ALL); setStatus(ALL);
     setDateFrom('');  setDateTo('');
   };
 
-  const hasFilters = protocol !== ALL || status !== ALL || mode !== ALL || !!dateFrom || !!dateTo;
-  const filterCount = [protocol !== ALL, status !== ALL, mode !== ALL, !!dateFrom, !!dateTo].filter(Boolean).length;
+  const hasFilters = protocol !== ALL || status !== ALL || !!dateFrom || !!dateTo;
+  const filterCount = [protocol !== ALL, status !== ALL, !!dateFrom, !!dateTo].filter(Boolean).length;
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -165,24 +162,7 @@ export default function Trades() {
           {/* Mode */}
           <div>
             <p className="text-[10px] text-muted uppercase tracking-widest mb-2">Mode</p>
-            <div className="flex flex-wrap gap-1.5">
-              {MODES.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setMode(opt as TradeMode | typeof ALL)}
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs border transition-all',
-                    mode === opt
-                      ? opt === 'LIVE'  ? 'bg-profit/10 text-profit border-profit/30'
-                      : opt === 'PAPER' ? 'bg-warning/10 text-warning border-warning/30'
-                      : 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
-                      : 'bg-panel-mid text-muted border-border hover:text-foreground',
-                  )}
-                >
-                  {opt === ALL ? 'All' : opt === 'LIVE' ? 'Live' : 'Simulation'}
-                </button>
-              ))}
-            </div>
+            <p className="text-xs text-muted italic">Controlled by the global switcher in the header.</p>
           </div>
 
           {/* Protocol */}

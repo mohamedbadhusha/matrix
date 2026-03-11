@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 import { useTrades } from '@/app/providers/TradeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import TradeCard from '@/components/TradeCard';
@@ -21,7 +20,7 @@ import {
 } from 'lucide-react';
 import { DAILY_TRADE_LIMITS } from '@/lib/constants';
 
-type ModeFilter = 'ALL' | 'LIVE' | 'PAPER';
+type ModeFilter = 'ALL' | 'LIVE' | 'PAPER'; // kept for type-compat, unused locally
 
 function StatCard({
   label,
@@ -56,17 +55,12 @@ export default function Dashboard() {
   const { activeTrades, allTrades, loadingTrades, deleteTrade, updateTrade } = useTrades();
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [modeFilter, setModeFilter] = useState<ModeFilter>('ALL');
 
   if (loadingTrades) return <LoadingScreen fullScreen={false} message="Loading trades…" />;
 
-  // Apply mode filter
-  const filteredAll = modeFilter === 'ALL' ? allTrades : allTrades.filter((t) => t.mode === modeFilter);
-  const filteredActive = modeFilter === 'ALL' ? activeTrades : activeTrades.filter((t) => t.mode === modeFilter);
-
-  // Compute stats from filtered trades
+  // Trades are already filtered by global mode (TradeProvider + TradeModeContext)
   const today = new Date().toDateString();
-  const todayTrades = filteredAll.filter(
+  const todayTrades = allTrades.filter(
     (t) => new Date(t.created_at).toDateString() === today,
   );
   const todayPnl = todayTrades.reduce((sum, t) => {
@@ -74,7 +68,7 @@ export default function Dashboard() {
     return sum + t.booked_pnl + (ltp - t.entry_price) * t.remaining_quantity;
   }, 0);
 
-  const closedTrades = filteredAll.filter((t) => t.status === 'CLOSED');
+  const closedTrades = allTrades.filter((t) => t.status === 'CLOSED');
   const winningTrades = closedTrades.filter((t) => t.booked_pnl > 0);
   const winRate = closedTrades.length > 0
     ? Math.round((winningTrades.length / closedTrades.length) * 100)
@@ -84,12 +78,6 @@ export default function Dashboard() {
   const tradesLeft = dailyLimit === Infinity
     ? '∞'
     : String(dailyLimit - (profile?.daily_trades_used ?? 0));
-
-  const MODE_LABELS: Record<ModeFilter, string> = {
-    ALL: 'All Accounts',
-    LIVE: 'Live',
-    PAPER: 'Simulation',
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -126,31 +114,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Account mode filter */}
-      <div className="flex items-center gap-1 p-1 bg-panel-mid rounded-xl border border-border w-fit">
-        {(['ALL', 'LIVE', 'PAPER'] as ModeFilter[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setModeFilter(m)}
-            className={cn(
-              'px-4 py-1.5 rounded-lg text-xs font-medium transition-all',
-              modeFilter === m
-                ? m === 'LIVE'
-                  ? 'bg-profit/15 text-profit border border-profit/30'
-                  : m === 'PAPER'
-                  ? 'bg-warning/15 text-warning border border-warning/30'
-                  : 'bg-panel-dark text-foreground border border-border shadow-sm'
-                : 'text-muted hover:text-foreground',
-            )}
-          >
-            {m === 'LIVE' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-profit mr-1.5 align-middle" />}
-            {m === 'PAPER' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-warning mr-1.5 align-middle" />}
-            {MODE_LABELS[m]}
-          </button>
-        ))}
-      </div>
+      {/* Account mode filter is now global — in the TopBar */}
 
-      {/* Stats row */}
+      {/* Stats row */}}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Today P&L"
@@ -161,8 +127,8 @@ export default function Dashboard() {
         />
         <StatCard
           label="Active Trades"
-          value={String(filteredActive.length)}
-          sub={filteredActive.filter(t => t.mode === 'LIVE').length + ' LIVE'}
+          value={String(activeTrades.length)}
+          sub={activeTrades.filter(t => t.mode === 'LIVE').length + ' LIVE'}
           icon={Activity}
         />
         <StatCard
@@ -182,19 +148,19 @@ export default function Dashboard() {
       </div>
 
       {/* Active trades */}
-      {filteredActive.length > 0 ? (
+      {activeTrades.length > 0 ? (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
               <span className="dot-live" />
               Active Trades
               <span className="badge bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30 text-[10px]">
-                {filteredActive.length}
+                {activeTrades.length}
               </span>
             </h2>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {filteredActive.map((trade) => (
+            {activeTrades.map((trade) => (
               <TradeCard
                 key={trade.id}
                 trade={trade}
@@ -222,8 +188,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent trades preview — last 5 across all statuses */}
-      {filteredAll.length > 0 && (
+      {/* Recent trades preview — last 8 across all statuses */}
+      {allTrades.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-foreground">Recent Trades</h2>
@@ -248,7 +214,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[...filteredAll]
+                {[...allTrades]
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   .slice(0, 8)
                   .map((trade) => {
