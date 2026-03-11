@@ -22,6 +22,25 @@ import { useTradeMode } from '@/app/providers/TradeModeProvider';
 
 type Tab = 'signal' | 'manual';
 
+// ── Strike step per underlying (points between consecutive strikes) ───────────
+const STRIKE_STEP: Record<string, number> = {
+  NIFTY:      50,
+  BANKNIFTY:  100,
+  FINNIFTY:   50,
+  MIDCPNIFTY: 25,
+  SENSEX:     100,
+  BANKEX:     100,
+};
+
+/** Generate 20 strikes centered on the nearest step-multiple to `center`, spaced by step */
+function genStrikes(symbol: string, center: number): number[] {
+  const step = STRIKE_STEP[symbol] ?? 50;
+  const atm  = Math.round(center / step) * step;
+  const strikes: number[] = [];
+  for (let i = -10; i <= 10; i++) strikes.push(atm + i * step);
+  return strikes;
+}
+
 const defaultForm = {
   symbol: 'NIFTY',
   strike: '',
@@ -349,15 +368,63 @@ export default function Deploy() {
             <label className="block text-xs text-muted mb-1.5">
               {MCX_SYMBOLS.has(form.symbol)
                 ? <>Contract <span className="text-muted/50">(e.g. APR25FUT)</span></>
-                : <>Strike <span className="text-muted/50">(e.g. 25100 CE)</span></>
+                : <>Strike</>
               }
             </label>
-            <input
-              className="input-base font-mono"
-              placeholder={MCX_SYMBOLS.has(form.symbol) ? 'APR25FUT' : '25100 CE'}
-              value={form.strike}
-              onChange={(e) => setForm((f) => ({ ...f, strike: e.target.value.toUpperCase() }))}
-            />
+            {MCX_SYMBOLS.has(form.symbol) ? (
+              /* MCX — plain contract name e.g. APR25FUT */
+              <input
+                className="input-base font-mono"
+                placeholder="APR25FUT"
+                value={form.strike}
+                onChange={(e) => setForm((f) => ({ ...f, strike: e.target.value.toUpperCase() }))}
+              />
+            ) : (
+              /* Equity index — dropdown of strikes + CE/PE toggle */
+              <div className="space-y-2">
+                {/* CE / PE row */}
+                <div className="flex gap-2">
+                  {(['CE', 'PE'] as const).map((type) => {
+                    const active = form.strike.trimEnd().toUpperCase().endsWith(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          const num = form.strike.replace(/\s*(CE|PE)$/i, '').trim();
+                          setForm((f) => ({ ...f, strike: num ? `${num} ${type}` : type }));
+                        }}
+                        className={cn(
+                          'flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all',
+                          active && type === 'CE'
+                            ? 'bg-loss/15 text-loss border-loss/50 ring-1 ring-loss/30'
+                            : active && type === 'PE'
+                            ? 'bg-profit/15 text-profit border-profit/50 ring-1 ring-profit/30'
+                            : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                        )}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Strike dropdown */}
+                <select
+                  className="input-base font-mono text-sm"
+                  value={form.strike.replace(/\s*(CE|PE)$/i, '').trim()}
+                  onChange={(e) => {
+                    const num   = e.target.value;
+                    const type  = /PE$/i.test(form.strike) ? 'PE' : 'CE';
+                    setForm((f) => ({ ...f, strike: num ? `${num} ${type}` : '' }));
+                  }}
+                >
+                  <option value="">Select strike…</option>
+                  {genStrikes(form.symbol, numEntry || 25000).map((s) => (
+                    <option key={s} value={String(s)}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Entry */}
