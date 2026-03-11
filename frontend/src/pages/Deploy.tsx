@@ -14,7 +14,7 @@ import {
   canDeployTrade,
   cn,
 } from '@/lib/utils';
-import { SYMBOLS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META, PROTOCOL_BUCKETS } from '@/lib/constants';
+import { SYMBOL_EXCHANGE, MCX_SYMBOLS, SYMBOL_GROUPS, TIER_FEATURES, DAILY_TRADE_LIMITS, PROTOCOL_META, PROTOCOL_BUCKETS } from '@/lib/constants';
 import type { Protocol, TargetMode, TradeMode, ParsedSignal, DeployTradeInput } from '@/types';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronRight, Info, Zap } from 'lucide-react';
@@ -122,7 +122,7 @@ export default function Deploy() {
   // Auto-compute MOMENTUM targets when entry/protocol changes
   useEffect(() => {
     if (form.targetMode === 'MOMENTUM' && form.entryPrice && !isNaN(Number(form.entryPrice))) {
-      const targets = computeTargets(Number(form.entryPrice), form.protocol);
+      const targets = computeTargets(Number(form.entryPrice), form.protocol, form.symbol);
       setForm((f) => ({
         ...f,
         t1: String(targets.t1),
@@ -188,7 +188,7 @@ export default function Deploy() {
         strike: form.strike,
         tradingSymbol: form.tradingSymbol || buildTradingSymbol(form.symbol, form.strike),
         securityId: form.securityId,
-        exchange: form.symbol === 'SENSEX' || form.symbol === 'BANKEX' ? 'BSE_FNO' : 'NSE_FNO',
+        exchange: SYMBOL_EXCHANGE[form.symbol] ?? 'NSE_FNO',
         protocol: form.protocol,
         targetMode: form.targetMode,
         mode: form.mode,
@@ -334,20 +334,27 @@ export default function Deploy() {
               value={form.symbol}
               onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
             >
-              {SYMBOLS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {Object.entries(SYMBOL_GROUPS).map(([group, syms]) => (
+                <optgroup key={group} label={group}>
+                  {syms.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
 
-          {/* Strike */}
+          {/* Strike / Contract */}
           <div>
             <label className="block text-xs text-muted mb-1.5">
-              Strike <span className="text-muted/50">(e.g. 25100 CE)</span>
+              {MCX_SYMBOLS.has(form.symbol)
+                ? <>Contract <span className="text-muted/50">(e.g. APR25FUT)</span></>
+                : <>Strike <span className="text-muted/50">(e.g. 25100 CE)</span></>
+              }
             </label>
             <input
               className="input-base font-mono"
-              placeholder="25100 CE"
+              placeholder={MCX_SYMBOLS.has(form.symbol) ? 'APR25FUT' : '25100 CE'}
               value={form.strike}
               onChange={(e) => setForm((f) => ({ ...f, strike: e.target.value.toUpperCase() }))}
             />

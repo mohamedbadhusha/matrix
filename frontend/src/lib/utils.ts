@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { Protocol, TradeNode, UserTier } from '@/types';
-import { MOMENTUM_DELTA, PROTOCOL_BUCKETS, LOT_SIZES, DAILY_TRADE_LIMITS } from './constants';
+import { MOMENTUM_DELTA, SYMBOL_MOMENTUM_DELTA, PROTOCOL_BUCKETS, LOT_SIZES, DAILY_TRADE_LIMITS } from './constants';
 
 // ── Tailwind class merge utility ─────────────────────────────────────────
 export function cn(...inputs: ClassValue[]) {
@@ -51,8 +51,12 @@ export function formatPct(value: number): string {
 export function computeTargets(
   entryPrice: number,
   protocol: Protocol,
+  symbol?: string,
 ): { t1: number; t2: number; t3: number } {
-  const delta = MOMENTUM_DELTA[protocol];
+  const symbolKey = symbol?.toUpperCase();
+  const delta = (symbolKey && SYMBOL_MOMENTUM_DELTA[symbolKey]?.[protocol])
+    ? SYMBOL_MOMENTUM_DELTA[symbolKey][protocol]!
+    : MOMENTUM_DELTA[protocol];
   return {
     t1: parseFloat((entryPrice + delta.T1).toFixed(2)),
     t2: parseFloat((entryPrice + delta.T2).toFixed(2)),

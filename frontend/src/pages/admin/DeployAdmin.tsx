@@ -53,7 +53,7 @@ export default function DeployAdmin() {
 
   useEffect(() => {
     if (form.targetMode === 'MOMENTUM' && form.entryPrice && !isNaN(Number(form.entryPrice))) {
-      const targets = computeTargets(Number(form.entryPrice), form.protocol);
+      const targets = computeTargets(Number(form.entryPrice), form.protocol, form.symbol);
       setForm((f) => ({ ...f, t1: String(targets.t1), t2: String(targets.t2), t3: String(targets.t3) }));
     }
   }, [form.entryPrice, form.protocol, form.targetMode]);
