@@ -1,10 +1,17 @@
 import { logger } from './logger';
 
-const DHAN_BASE = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+const DHAN_LIVE    = process.env.DHAN_BASE_URL ?? 'https://api.dhan.co/v2';
+const DHAN_SANDBOX = 'https://sandbox.dhan.co/v2';
 
 export interface BrokerCredentials {
   clientId: string;
   accessToken: string;
+  /** 'PAPER' accounts route to sandbox Dhan; 'LIVE' accounts route to live Dhan */
+  mode: 'LIVE' | 'PAPER';
+}
+
+function dhanBase(creds: BrokerCredentials): string {
+  return creds.mode === 'PAPER' ? DHAN_SANDBOX : DHAN_LIVE;
 }
 
 export interface OrderPayload {
@@ -28,7 +35,7 @@ export async function placeOrder(
       correlationId: payload.correlationId,
       transactionType: payload.transactionType,
       exchangeSegment: payload.exchange,
-      productType: 'I',
+      productType: 'INTRADAY',
       orderType: payload.orderType,
       validity: 'DAY',
       tradingSymbol: payload.tradingSymbol,
@@ -40,7 +47,7 @@ export async function placeOrder(
       afterMarketOrder: false,
     };
 
-    const res = await fetch(`${DHAN_BASE}/orders`, {
+    const res = await fetch(`${dhanBase(creds)}/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -99,7 +106,7 @@ export async function cancelOrder(
   orderId: string,
 ): Promise<boolean> {
   try {
-    const res = await fetch(`${DHAN_BASE}/orders/${orderId}`, {
+    const res = await fetch(`${dhanBase(creds)}/orders/${orderId}`, {
       method: 'DELETE',
       headers: { 'access-token': creds.accessToken },
     });

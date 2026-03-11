@@ -44,6 +44,7 @@ export interface TradeNode {
 interface BrokerCreds {
   clientId: string;
   accessToken: string;
+  mode: 'LIVE' | 'PAPER';
 }
 
 async function getBrokerCreds(
@@ -52,11 +53,15 @@ async function getBrokerCreds(
 ): Promise<BrokerCreds | null> {
   const { data } = await supabase
     .from('broker_accounts')
-    .select('client_id, access_token, api_key')
+    .select('client_id, access_token, api_key, mode')
     .eq('id', brokerId)
     .single();
   if (!data) return null;
-  return { clientId: data.client_id, accessToken: data.access_token ?? data.api_key };
+  return {
+    clientId: data.client_id,
+    accessToken: data.access_token ?? data.api_key,
+    mode: (data.mode ?? 'LIVE') as 'LIVE' | 'PAPER',
+  };
 }
 
 async function updateTrade(
@@ -82,7 +87,7 @@ async function cancelSlOrder(supabase: SupabaseClient, trade: TradeNode): Promis
 
 /**
  * Close the entire trade (SL_HIT or force-close).
- * Exits remaining_quantity, cancels pending SL order.
+ * Exits remaining_quantity at MARKET, cancels pending SL order.
  * P&L = already-booked partial exits + remaining position P&L.
  */
 async function closeTrade(
@@ -93,6 +98,23 @@ async function closeTrade(
 ) {
   // Cancel standing broker SL order to avoid double-exit
   await cancelSlOrder(supabase, trade);
+
+  // Place MARKET SELL for remaining quantity on live broker
+  if (trade.mode === 'LIVE' && trade.broker_account_id && trade.remaining_quantity > 0) {
+    const creds = await getBrokerCreds(supabase, trade.broker_account_id);
+    if (creds) {
+      await placeOrder(creds, {
+        tradingSymbol: trade.trading_symbol,
+        securityId: trade.security_id ?? '',
+        exchange: trade.exchange,
+        transactionType: 'SELL',
+        orderType: 'MARKET',
+        quantity: trade.remaining_quantity,
+        price: 0,
+        correlationId: `${trade.id}-${reason}`,
+      });
+    }
+  }
 
   // P&L = locked-in booked P&L + remaining position P&L
   const remainingPnl = (exitPrice - trade.entry_price) * trade.remaining_quantity;
