@@ -13,13 +13,16 @@ import { Link, useNavigate } from 'react-router-dom';
 
 // ── Well-known underlyings ───────────────────────────────────────────────────
 const UNDERLYINGS = [
-  { label: 'NIFTY 50',            scrip: 13,  seg: 'IDX_I' },
-  { label: 'BANK NIFTY',          scrip: 25,  seg: 'IDX_I' },
-  { label: 'FIN NIFTY',           scrip: 27,  seg: 'IDX_I' },
-  { label: 'MIDCAP NIFTY',        scrip: 442, seg: 'IDX_I' },
-  { label: 'SENSEX',              scrip: 51,  seg: 'IDX_I' },
-  { label: 'BANKEX',              scrip: 20,  seg: 'IDX_I' },
-  { label: 'Custom',              scrip: 0,   seg: 'IDX_I' },
+  { label: 'NIFTY 50',            scrip: 13,    seg: 'IDX_I'    },
+  { label: 'BANK NIFTY',          scrip: 25,    seg: 'IDX_I'    },
+  { label: 'FIN NIFTY',           scrip: 27,    seg: 'IDX_I'    },
+  { label: 'MIDCAP NIFTY',        scrip: 442,   seg: 'IDX_I'    },
+  { label: 'SENSEX',              scrip: 51,    seg: 'IDX_I'    },
+  { label: 'BANKEX',              scrip: 20,    seg: 'IDX_I'    },
+  // ─── MCX Commodities ──────────────────────────────────────────────────────
+  { label: 'CRUDEOIL',            scrip: 10014, seg: 'MCX_COMM' },
+  { label: 'NATURALGAS',          scrip: 10017, seg: 'MCX_COMM' },
+  { label: 'Custom',              scrip: 0,     seg: 'IDX_I'    },
 ];
 
 const SEGMENTS = ['IDX_I', 'NSE_FNO', 'BSE_FNO', 'MCX_COMM', 'NSE_EQ', 'BSE_EQ'];
@@ -114,7 +117,12 @@ const UNDERLYING_TO_SYMBOL: Record<string, string> = {
   'MIDCAP NIFTY': 'MIDCPNIFTY',
   'SENSEX':       'SENSEX',
   'BANKEX':       'BANKEX',
+  'CRUDEOIL':     'CRUDEOIL',
+  'NATURALGAS':   'NATURALGAS',
 };
+
+/** Returns true if the underlying is an MCX commodity */
+const isMCX = (label: string) => UNDERLYINGS.find(u => u.label === label)?.seg === 'MCX_COMM';
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function OptionChain() {
@@ -130,8 +138,15 @@ export default function OptionChain() {
   const [customScrip, setCustomScrip]       = useState(0);
   const [customSeg, setCustomSeg]           = useState('IDX_I');
 
-  const activeScrip = underlyingIdx === UNDERLYINGS.length - 1 ? customScrip : UNDERLYINGS[underlyingIdx].scrip;
-  const activeSeg   = underlyingIdx === UNDERLYINGS.length - 1 ? customSeg   : UNDERLYINGS[underlyingIdx].seg;
+  const isCustom  = underlyingIdx === UNDERLYINGS.length - 1;
+  const isMCXEntry = !isCustom && UNDERLYINGS[underlyingIdx].seg === 'MCX_COMM';
+  // For Custom: always use customScrip/Seg. For MCX entries: use customScrip as override if set, else use built-in scrip.
+  const activeScrip = isCustom
+    ? customScrip
+    : isMCXEntry && customScrip > 0
+      ? customScrip
+      : UNDERLYINGS[underlyingIdx].scrip;
+  const activeSeg   = isCustom ? customSeg : UNDERLYINGS[underlyingIdx].seg;
 
   // Expiry
   const [expiries, setExpiries]             = useState<string[]>([]);
@@ -327,14 +342,35 @@ export default function OptionChain() {
           <label className="block text-[10px] text-muted mb-1.5 font-semibold uppercase tracking-wide">Underlying</label>
           <div className="flex flex-wrap gap-1.5">
             {UNDERLYINGS.map((u, i) => (
-              <button key={i} onClick={() => setUnderlyingIdx(i)}
+              <button key={i} onClick={() => { setUnderlyingIdx(i); setCustomScrip(0); }}
                 className={cn('text-xs px-2.5 py-1 rounded-lg border transition-all',
-                  underlyingIdx === i ? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30' : 'text-muted border-border hover:text-foreground')}>
-                {u.label}
+                  underlyingIdx === i ? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30' : 'text-muted border-border hover:text-foreground',
+                  u.seg === 'MCX_COMM' && 'border-dashed',
+                )}>
+                {u.label}{u.seg === 'MCX_COMM' && <span className="ml-1 text-[8px] opacity-60">MCX</span>}
               </button>
             ))}
           </div>
         </div>
+
+        {/* MCX note + editable scrip override */}
+        {underlyingIdx < UNDERLYINGS.length - 1 && UNDERLYINGS[underlyingIdx].seg === 'MCX_COMM' && (
+          <div className="flex items-center gap-3">
+            <div>
+              <label className="block text-[10px] text-muted mb-1.5">Underlying Scrip ID <span className="text-muted/50">(Dhan)</span></label>
+              <input
+                type="number"
+                className="input-base text-sm w-28 font-mono"
+                value={customScrip || UNDERLYINGS[underlyingIdx].scrip}
+                onChange={e => setCustomScrip(Number(e.target.value))}
+                placeholder={String(UNDERLYINGS[underlyingIdx].scrip)}
+              />
+            </div>
+            <p className="text-[10px] text-warning/80 mt-4">
+              ⚠ MCX weekly expiry requires active Dhan login.
+            </p>
+          </div>
+        )}
 
         {/* Custom fields */}
         {underlyingIdx === UNDERLYINGS.length - 1 && (
