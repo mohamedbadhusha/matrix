@@ -53,7 +53,7 @@ function StatCard({
 }
 
 export default function Dashboard() {
-  const { activeTrades, allTrades, loadingTrades, deleteTrade } = useTrades();
+  const { activeTrades, allTrades, loadingTrades, deleteTrade, updateTrade } = useTrades();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [modeFilter, setModeFilter] = useState<ModeFilter>('ALL');
@@ -195,7 +195,12 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {filteredActive.map((trade) => (
-              <TradeCard key={trade.id} trade={trade} onDelete={deleteTrade} />
+              <TradeCard
+                key={trade.id}
+                trade={trade}
+                onDelete={deleteTrade}
+                onEdit={(id, u) => updateTrade(id, u)}
+              />
             ))}
           </div>
         </div>
@@ -217,8 +222,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent trades preview */}
-      {closedTrades.length > 0 && (
+      {/* Recent trades preview — last 5 across all statuses */}
+      {filteredAll.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-foreground">Recent Trades</h2>
@@ -235,36 +240,89 @@ export default function Dashboard() {
                 <tr>
                   <th>Instrument</th>
                   <th>Protocol</th>
+                  <th>Mode</th>
                   <th>Entry</th>
                   <th>P&L</th>
                   <th>Status</th>
+                  <th>Time</th>
                 </tr>
               </thead>
               <tbody>
-                {closedTrades.slice(0, 5).map((trade) => (
-                  <tr key={trade.id} className="border-b border-border/50 hover:bg-panel-mid/50 transition-colors">
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-sm">{trade.symbol}</span>{' '}
-                      <span className="text-muted text-xs">{trade.strike}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="badge text-[10px] bg-panel-mid border-border text-muted">
-                        {trade.protocol.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 price text-sm">{trade.entry_price}</td>
-                    <td className="py-3 px-4">
-                      <span className={cn('price text-sm', getPnlClass(trade.booked_pnl))}>
-                        {trade.booked_pnl >= 0 ? '+' : ''}{formatCurrency(trade.booked_pnl)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="badge text-[10px] bg-muted/10 text-muted border-muted/30">
-                        {trade.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {[...filteredAll]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 8)
+                  .map((trade) => {
+                    const ltp = trade.ltp ?? trade.entry_price;
+                    const openPnl = trade.status === 'ACTIVE'
+                      ? (ltp - trade.entry_price) * trade.remaining_quantity
+                      : 0;
+                    const totalPnl = trade.booked_pnl + openPnl;
+                    // Sub-status
+                    let subLabel = '';
+                    let subCls = '';
+                    if (trade.status === 'ACTIVE') {
+                      if (trade.mode === 'LIVE' && !trade.broker_order_id) {
+                        subLabel = 'ENTRY PENDING'; subCls = 'text-warning';
+                      } else if (trade.t2_hit) {
+                        subLabel = 'T2 BOOKED'; subCls = 'text-profit';
+                      } else if (trade.t1_hit) {
+                        subLabel = 'T1 BOOKED'; subCls = 'text-accent-cyan';
+                      }
+                    }
+                    return (
+                      <tr key={trade.id} className="border-b border-border/50 hover:bg-panel-mid/50 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="font-semibold text-sm">{trade.symbol}</span>{' '}
+                          <span className="text-muted text-xs">{trade.strike}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="badge text-[10px] bg-panel-mid border-border text-muted">
+                            {trade.protocol.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={cn(
+                            'badge text-[10px]',
+                            trade.mode === 'LIVE'
+                              ? 'bg-profit/10 text-profit border-profit/30'
+                              : 'bg-warning/10 text-warning border-warning/30',
+                          )}>
+                            {trade.mode}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 price text-sm">{trade.entry_price}</td>
+                        <td className="py-3 px-4">
+                          <span className={cn('price text-sm font-semibold', getPnlClass(totalPnl))}>
+                            {totalPnl >= 0 ? '+' : ''}{formatCurrency(totalPnl)}
+                          </span>
+                          {trade.booked_pnl !== 0 && trade.status === 'ACTIVE' && (
+                            <p className={cn('text-[10px]', getPnlClass(trade.booked_pnl))}>
+                              Bkd {trade.booked_pnl >= 0 ? '+' : ''}{formatCurrency(trade.booked_pnl)}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className={cn(
+                              'badge text-[10px] w-fit',
+                              trade.status === 'ACTIVE'  ? 'bg-profit/10 text-profit border-profit/30' :
+                              trade.status === 'CLOSED'  ? 'bg-muted/10 text-muted border-muted/30' :
+                              trade.status === 'SL_HIT'  ? 'bg-loss/10 text-loss border-loss/30' :
+                              'bg-loss/10 text-loss border-loss/30',
+                            )}>
+                              {trade.status === 'SL_HIT' ? 'SL HIT' : trade.status}
+                            </span>
+                            {subLabel && (
+                              <span className={cn('text-[10px] font-medium', subCls)}>{subLabel}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-xs text-muted whitespace-nowrap">
+                          {new Date(trade.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

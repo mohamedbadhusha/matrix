@@ -16,6 +16,7 @@ interface TradeContextValue {
   loadingTrades: boolean;
   refetchTrades: () => Promise<void>;
   deleteTrade: (id: string) => Promise<void>;
+  updateTrade: (id: string, updates: Partial<TradeNode>) => Promise<void>;
 }
 
 const TradeContext = createContext<TradeContextValue | undefined>(undefined);
@@ -57,6 +58,19 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       // Revert — re-fetch so the trade reappears
       fetchTrades();
       console.error('[deleteTrade] DB delete failed:', error.message);
+    }
+  }, [fetchTrades]);
+
+  const updateTrade = useCallback(async (id: string, updates: Partial<TradeNode>) => {
+    // Optimistically update UI
+    setAllTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
+    setActiveTrades((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
+    const { error } = await supabase.from('trade_nodes').update(updates).eq('id', id);
+    if (error) {
+      // Revert on failure
+      fetchTrades();
+      console.error('[updateTrade] DB update failed:', error.message);
+      throw error;
     }
   }, [fetchTrades]);
 
@@ -115,7 +129,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   return (
-    <TradeContext.Provider value={{ activeTrades, allTrades, loadingTrades, refetchTrades, deleteTrade }}>
+    <TradeContext.Provider value={{ activeTrades, allTrades, loadingTrades, refetchTrades, deleteTrade, updateTrade }}>
       {children}
     </TradeContext.Provider>
   );

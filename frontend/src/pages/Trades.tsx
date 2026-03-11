@@ -13,7 +13,7 @@ const STATUSES: (TradeStatus | typeof ALL)[] = [ALL, 'ACTIVE', 'CLOSED', 'SL_HIT
 const MODES: (TradeMode | typeof ALL)[] = [ALL, 'LIVE', 'PAPER'];
 
 export default function Trades() {
-  const { allTrades, loadingTrades, deleteTrade } = useTrades();
+  const { allTrades, loadingTrades, deleteTrade, updateTrade } = useTrades();
 
   const [protocol, setProtocol] = useState<Protocol | typeof ALL>(ALL);
   const [status, setStatus] = useState<TradeStatus | typeof ALL>(ALL);
@@ -169,11 +169,16 @@ export default function Trades() {
                     onExpand={(id) => setExpandedId((prev) => (prev === id ? null : id))}
                     expanded={expandedId === trade.id}
                     onDelete={deleteTrade}
+                    onEdit={(id, u) => updateTrade(id, u)}
                   />
                   {expandedId === trade.id && (
                     <tr key={`${trade.id}-expand`}>
                       <td colSpan={9} className="p-4 bg-panel-mid/60">
-                        <TradeCard trade={trade} onDelete={deleteTrade} />
+                        <TradeCard
+                          trade={trade}
+                          onDelete={deleteTrade}
+                          onEdit={(id, u) => updateTrade(id, u)}
+                        />
                       </td>
                     </tr>
                   )}

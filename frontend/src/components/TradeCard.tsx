@@ -7,13 +7,115 @@ import {
   cn,
 } from '@/lib/utils';
 import { PROTOCOL_META } from '@/lib/constants';
-import { TrendingUp, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { TrendingUp, Clock, AlertCircle, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface TradeCardProps {
   trade: TradeNode;
   onClick?: () => void;
   onDelete?: (id: string) => void;
+  onEdit?: (id: string, updates: Partial<TradeNode>) => Promise<void>;
+}
+
+// ── Sub-status helper (partial booking, pending entry) ─────────────────────
+function getSubStatus(trade: TradeNode): { label: string; cls: string } | null {
+  if (trade.status !== 'ACTIVE') return null;
+  if (trade.mode === 'LIVE' && !trade.broker_order_id) {
+    return { label: 'ENTRY PENDING', cls: 'bg-warning/10 text-warning border-warning/30' };
+  }
+  if (trade.t2_hit) return { label: 'T2 BOOKED', cls: 'bg-profit/10 text-profit border-profit/30' };
+  if (trade.t1_hit) return { label: 'T1 BOOKED', cls: 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30' };
+  return null;
+}
+
+// ── Inline edit form ───────────────────────────────────────────────────────
+function EditTradeForm({
+  trade,
+  onSave,
+  onCancel,
+}: {
+  trade: TradeNode;
+  onSave: (updates: Partial<TradeNode>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [sl, setSl] = useState(String(trade.sl));
+  const [t1, setT1] = useState(String(trade.t1));
+  const [t2, setT2] = useState(String(trade.t2));
+  const [t3, setT3] = useState(String(trade.t3));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const slV = parseFloat(sl);
+    const t1V = parseFloat(t1);
+    const t2V = parseFloat(t2);
+    const t3V = parseFloat(t3);
+    if ([slV, t1V, t2V, t3V].some(isNaN)) {
+      toast.error('All price fields must be valid numbers');
+      return;
+    }
+    if (slV >= trade.entry_price) {
+      toast.error('SL must be below entry price');
+      return;
+    }
+    if (!(t1V < t2V && t2V < t3V)) {
+      toast.error('Targets must be ordered: T1 < T2 < T3');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave({ sl: slV, t1: t1V, t2: t2V, t3: t3V });
+      toast.success('Trade levels updated — worker will use new values on next tick');
+      onCancel();
+    } catch {
+      toast.error('Failed to save — check console');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="mt-3 pt-3 border-t border-border/50 space-y-3 animate-slide-up"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="text-[10px] text-muted uppercase tracking-wide font-semibold">Edit Levels</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {[
+          { label: 'Stop Loss', val: sl, set: setSl, cls: 'text-loss' },
+          { label: 'Target 1',  val: t1, set: setT1, cls: 'text-profit' },
+          { label: 'Target 2',  val: t2, set: setT2, cls: 'text-profit' },
+          { label: 'Target 3',  val: t3, set: setT3, cls: 'text-profit' },
+        ].map(({ label, val, set, cls }) => (
+          <div key={label}>
+            <label className="text-[9px] text-muted/60 uppercase tracking-wide block mb-1">{label}</label>
+            <input
+              type="number"
+              step="0.05"
+              className={cn('input-base text-xs w-full', cls)}
+              value={val}
+              onChange={(e) => set(e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-profit/15 text-profit border border-profit/30 hover:bg-profit/25 transition-colors disabled:opacity-50"
+        >
+          <Check size={11} /> {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
+        >
+          <X size={11} /> Cancel
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function BucketDots({ total, remaining }: { total: number; remaining: number }) {
@@ -83,14 +185,16 @@ function PriceBar({ trade }: { trade: TradeNode }) {
   );
 }
 
-export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) {
+export default function TradeCard({ trade, onClick, onDelete, onEdit }: TradeCardProps) {
   const meta = PROTOCOL_META[trade.protocol as Protocol];
   const ltp = trade.ltp ?? trade.entry_price;
   const unrealizedPnl = (ltp - trade.entry_price) * trade.remaining_quantity;
   const totalPnl = trade.booked_pnl + unrealizedPnl;
   const isActive = trade.status === 'ACTIVE';
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
+  const subStatus = getSubStatus(trade);
   const glowClass = isActive ? meta.glowClass : 'glow-red';
 
   return (
@@ -136,7 +240,11 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
         </div>
 
         {/* Status */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+          {/* Sub-status (ENTRY PENDING / T1 BOOKED / T2 BOOKED) */}
+          {subStatus && (
+            <span className={cn('badge text-[10px]', subStatus.cls)}>{subStatus.label}</span>
+          )}
           {isActive ? (
             <>
               <span className={trade.mode === 'LIVE' ? 'dot-live' : 'dot-paper'} />
@@ -214,15 +322,24 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
           <p className={cn('text-base price', getPnlClass(totalPnl))}>
             {totalPnl >= 0 ? '+' : ''}{formatCurrency(totalPnl)}
           </p>
-          {isActive && trade.booked_pnl !== 0 && (
-            <p className="text-[10px] text-muted">
-              Booked: {formatCurrency(trade.booked_pnl)}
-            </p>
+          {isActive && (
+            <div className="space-y-0.5 mt-0.5">
+              {trade.booked_pnl !== 0 && (
+                <p className={cn('text-[10px] font-semibold', getPnlClass(trade.booked_pnl))}>
+                  Booked {trade.booked_pnl >= 0 ? '+' : ''}{formatCurrency(trade.booked_pnl)}
+                </p>
+              )}
+              {trade.remaining_quantity > 0 && (
+                <p className={cn('text-[10px]', getPnlClass(unrealizedPnl))}>
+                  Open {unrealizedPnl >= 0 ? '+' : ''}{formatCurrency(unrealizedPnl)}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Time */}
+      {/* Time + action buttons */}
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-1">
           <Clock size={10} className="text-muted/50" />
@@ -231,151 +348,228 @@ export default function TradeCard({ trade, onClick, onDelete }: TradeCardProps) 
             <span className="text-[10px] text-muted/50"> · closed {relativeTime(trade.closed_at)}</span>
           )}
         </div>
-        {onDelete && (
-          <div className="flex items-center gap-1.5">
-            {confirmDelete ? (
-              <>
-                <span className="text-[10px] text-loss">Delete?</span>
+        <div className="flex items-center gap-1.5">
+          {/* Edit button — only for active trades */}
+          {isActive && onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditOpen((v) => !v); }}
+              className={cn(
+                'flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border transition-colors',
+                editOpen
+                  ? 'bg-accent-cyan/15 text-accent-cyan border-accent-cyan/30'
+                  : 'bg-panel-mid text-muted border-border hover:text-accent-cyan hover:border-accent-cyan/30',
+              )}
+              title="Edit SL / Targets"
+            >
+              <Pencil size={10} /> Edit
+            </button>
+          )}
+          {onDelete && (
+            <div className="flex items-center gap-1.5">
+              {confirmDelete ? (
+                <>
+                  <span className="text-[10px] text-loss">Delete?</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(trade.id); }}
+                    className="text-[10px] px-2 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                    className="text-[10px] px-2 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
+                  >
+                    No
+                  </button>
+                </>
+              ) : (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onDelete(trade.id); }}
-                  className="text-[10px] px-2 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                  className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
+                  title="Delete trade"
                 >
-                  Yes
+                  <Trash2 size={12} />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
-                  className="text-[10px] px-2 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
-                >
-                  No
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
-                className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
-                title="Delete active trade"
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Edit form (inline, only shown when editOpen) */}
+      {editOpen && onEdit && (
+        <EditTradeForm
+          trade={trade}
+          onSave={(updates) => onEdit(trade.id, updates)}
+          onCancel={() => setEditOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
-// Compact version for tables (9 cols: Symbol, Protocol, Mode, Entry, Exit/LTP, P&L, Status, Date, Expand)
+// Compact version for tables (9 cols: Symbol, Protocol, Mode, Entry, Exit/LTP, P&L, Status, Date, Actions)
 export function TradeCardCompact({
   trade,
   onExpand,
   expanded,
   onDelete,
+  onEdit,
 }: {
   trade: TradeNode;
   onExpand?: (id: string) => void;
   expanded?: boolean;
   onDelete?: (id: string) => void;
+  onEdit?: (id: string, updates: Partial<TradeNode>) => Promise<void>;
 }) {
   const meta = PROTOCOL_META[trade.protocol as Protocol];
   const ltp = trade.ltp ?? trade.entry_price;
+  const isActive = trade.status === 'ACTIVE';
+  const bookedPnl = trade.booked_pnl ?? 0;
+  const openPnl = isActive ? (ltp - trade.entry_price) * trade.remaining_quantity : 0;
   const pnl = trade.realised_pnl !== null && trade.realised_pnl !== undefined
     ? trade.realised_pnl
-    : (ltp - trade.entry_price) * trade.remaining_quantity;
+    : bookedPnl + openPnl;
+  const subStatus = getSubStatus(trade);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
-    <tr className="border-b border-border/50 hover:bg-panel-mid/50 transition-colors">
-      {/* Symbol */}
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-sm text-foreground">{trade.symbol}</span>
-          <span className="text-muted text-xs">{trade.strike}</span>
-        </div>
-      </td>
-      {/* Protocol */}
-      <td className="py-3 px-4">
-        <span className={cn('badge text-[10px]', meta.tagClass)}>{meta.label}</span>
-      </td>
-      {/* Mode */}
-      <td className="py-3 px-4">
-        <span className={cn(
-          'badge text-[10px]',
-          trade.mode === 'LIVE'
-            ? 'bg-profit/10 text-profit border-profit/30'
-            : 'bg-warning/10 text-warning border-warning/30',
-        )}>
-          {trade.mode}
-        </span>
-      </td>
-      {/* Entry */}
-      <td className="py-3 px-4 price text-sm">{formatPrice(trade.entry_price)}</td>
-      {/* Exit / LTP */}
-      <td className="py-3 px-4 price text-sm">
-        <span className={ltp >= trade.entry_price ? 'text-profit' : 'text-loss'}>
-          {trade.exit_price ? formatPrice(trade.exit_price) : formatPrice(ltp)}
-        </span>
-      </td>
-      {/* P&L */}
-      <td className="py-3 px-4">
-        <span className={cn('price text-sm font-semibold', getPnlClass(pnl))}>
-          {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
-        </span>
-      </td>
-      {/* Status */}
-      <td className="py-3 px-4">
-        <span className={cn(
-          'badge text-[10px]',
-          trade.status === 'ACTIVE' ? 'bg-profit/10 text-profit border-profit/30' :
-          trade.status === 'CLOSED' ? 'bg-muted/10 text-muted border-muted/30' :
-          'bg-loss/10 text-loss border-loss/30',
-        )}>
-          {trade.status}
-        </span>
-      </td>
-      {/* Date */}
-      <td className="py-3 px-4 text-xs text-muted">
-        {relativeTime(trade.created_at)}
-      </td>
-      {/* Expand + Delete */}
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          {onExpand && (
-            <button
-              onClick={() => onExpand(trade.id)}
-              className="text-muted hover:text-foreground transition-colors text-xs"
-            >
-              {expanded ? '▲' : '▼'}
-            </button>
+    <>
+      <tr className="border-b border-border/50 hover:bg-panel-mid/50 transition-colors">
+        {/* Symbol */}
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-sm text-foreground">{trade.symbol}</span>
+            <span className="text-muted text-xs">{trade.strike}</span>
+          </div>
+        </td>
+        {/* Protocol */}
+        <td className="py-3 px-4">
+          <span className={cn('badge text-[10px]', meta.tagClass)}>{meta.label}</span>
+        </td>
+        {/* Mode */}
+        <td className="py-3 px-4">
+          <span className={cn(
+            'badge text-[10px]',
+            trade.mode === 'LIVE'
+              ? 'bg-profit/10 text-profit border-profit/30'
+              : 'bg-warning/10 text-warning border-warning/30',
+          )}>
+            {trade.mode}
+          </span>
+        </td>
+        {/* Entry */}
+        <td className="py-3 px-4 price text-sm">{formatPrice(trade.entry_price)}</td>
+        {/* Exit / LTP */}
+        <td className="py-3 px-4 price text-sm">
+          <span className={ltp >= trade.entry_price ? 'text-profit' : 'text-loss'}>
+            {trade.exit_price ? formatPrice(trade.exit_price) : formatPrice(ltp)}
+          </span>
+        </td>
+        {/* P&L */}
+        <td className="py-3 px-4">
+          <div>
+            <span className={cn('price text-sm font-semibold', getPnlClass(pnl))}>
+              {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+            </span>
+            {isActive && bookedPnl !== 0 && (
+              <p className={cn('text-[10px]', getPnlClass(bookedPnl))}>
+                Bkd {bookedPnl >= 0 ? '+' : ''}{formatCurrency(bookedPnl)}
+              </p>
+            )}
+          </div>
+        </td>
+        {/* Status */}
+        <td className="py-3 px-4">
+          <div className="flex flex-col gap-1">
+            <span className={cn(
+              'badge text-[10px] w-fit',
+              trade.status === 'ACTIVE'  ? 'bg-profit/10 text-profit border-profit/30' :
+              trade.status === 'CLOSED'  ? 'bg-muted/10 text-muted border-muted/30' :
+              trade.status === 'SL_HIT'  ? 'bg-loss/10 text-loss border-loss/30' :
+              'bg-loss/10 text-loss border-loss/30',
+            )}>
+              {trade.status === 'SL_HIT' ? 'SL HIT' : trade.status}
+            </span>
+            {subStatus && (
+              <span className={cn('badge text-[10px] w-fit', subStatus.cls)}>
+                {subStatus.label}
+              </span>
+            )}
+          </div>
+        </td>
+        {/* Date */}
+        <td className="py-3 px-4 text-xs text-muted">
+          {relativeTime(trade.created_at)}
+          {trade.closed_at && (
+            <p className="text-[10px] text-muted/50">↳ {relativeTime(trade.closed_at)}</p>
           )}
-          {onDelete && (
-            confirmDelete ? (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onDelete(trade.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
-                >
-                  Del
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
+        </td>
+        {/* Actions */}
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-1.5">
+            {onExpand && (
               <button
-                onClick={() => setConfirmDelete(true)}
-                className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
-                title="Delete active trade"
+                onClick={() => onExpand(trade.id)}
+                className="text-muted hover:text-foreground transition-colors text-xs"
               >
-                <Trash2 size={12} />
+                {expanded ? '▲' : '▼'}
               </button>
-            )
-          )}
-        </div>
-      </td>
-    </tr>
+            )}
+            {isActive && onEdit && (
+              <button
+                onClick={() => setEditOpen((v) => !v)}
+                className={cn(
+                  'p-1 rounded transition-colors',
+                  editOpen ? 'text-accent-cyan' : 'text-muted/40 hover:text-accent-cyan hover:bg-accent-cyan/10',
+                )}
+                title="Edit SL / Targets"
+              >
+                <Pencil size={11} />
+              </button>
+            )}
+            {onDelete && (
+              confirmDelete ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => onDelete(trade.id)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-loss/20 text-loss border border-loss/30 hover:bg-loss/40 transition-colors"
+                  >
+                    Del
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-panel-mid text-muted border border-border hover:text-foreground transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-muted/40 hover:text-loss transition-colors p-1 rounded hover:bg-loss/10"
+                  title="Delete trade"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )
+            )}
+          </div>
+        </td>
+      </tr>
+      {/* Inline edit row */}
+      {editOpen && onEdit && (
+        <tr>
+          <td colSpan={9} className="px-4 pb-3 bg-panel-mid/40">
+            <EditTradeForm
+              trade={trade}
+              onSave={(updates) => onEdit(trade.id, updates)}
+              onCancel={() => setEditOpen(false)}
+            />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

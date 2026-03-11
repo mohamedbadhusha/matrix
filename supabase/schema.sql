@@ -891,8 +891,17 @@ CREATE POLICY "Users can insert own trades"
   ON public.trade_nodes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Users CANNOT update trades directly; only the Railway worker (service role) can.
--- This prevents users from manipulating trade state (e.g. fake-closing a losing trade).
+-- Users CAN update their own ACTIVE trades (to adjust SL / targets mid-trade).
+-- The Railway worker uses the service role and bypasses RLS, so there is no conflict.
+CREATE POLICY "Users can update own trades"
+  ON public.trade_nodes FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users CAN delete their own trades (record removal from history).
+CREATE POLICY "Users can delete own trades"
+  ON public.trade_nodes FOR DELETE
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can read all trades"
   ON public.trade_nodes FOR SELECT
@@ -1264,5 +1273,18 @@ ALTER TABLE public.dhan_orders
 UPDATE public.profiles
   SET role = 'super_admin'
   WHERE email = 'mohamedbadhusha001@gmail.com';
+
+-- 2026-03-11 | Allow users to update their own trades (SL / target editing mid-trade)
+DROP POLICY IF EXISTS "Users can update own trades" ON public.trade_nodes;
+CREATE POLICY "Users can update own trades"
+  ON public.trade_nodes FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- 2026-03-11 | Allow users to delete their own trades (history cleanup)
+DROP POLICY IF EXISTS "Users can delete own trades" ON public.trade_nodes;
+CREATE POLICY "Users can delete own trades"
+  ON public.trade_nodes FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- ============================================================
