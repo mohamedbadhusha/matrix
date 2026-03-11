@@ -32,7 +32,18 @@ const STRIKE_STEP: Record<string, number> = {
   BANKEX:     100,
 };
 
-/** Generate 20 strikes centered on the nearest step-multiple to `center`, spaced by step */
+// ── Typical underlying level per symbol (used to centre the strike dropdown) ───
+// These are approximate — the list stays usable even when stale.
+const SYMBOL_DEFAULT_LEVEL: Record<string, number> = {
+  NIFTY:      22000,
+  BANKNIFTY:  48000,
+  FINNIFTY:   21000,
+  MIDCPNIFTY: 12000,
+  SENSEX:     72000,
+  BANKEX:     52000,
+};
+
+/** Generate 21 strikes centred on the nearest step-multiple to `center`, spaced by step */
 function genStrikes(symbol: string, center: number): number[] {
   const step = STRIKE_STEP[symbol] ?? 50;
   const atm  = Math.round(center / step) * step;
@@ -351,7 +362,7 @@ export default function Deploy() {
             <select
               className="input-base"
               value={form.symbol}
-              onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value, strike: '' }))}
             >
               {Object.entries(SYMBOL_GROUPS).map(([group, syms]) => (
                 <optgroup key={group} label={group}>
@@ -363,8 +374,8 @@ export default function Deploy() {
             </select>
           </div>
 
-          {/* Strike / Contract */}
-          <div>
+          {/* Strike / Contract — full width */}
+          <div className="col-span-2">
             <label className="block text-xs text-muted mb-1.5">
               {MCX_SYMBOLS.has(form.symbol)
                 ? <>Contract <span className="text-muted/50">(e.g. APR25FUT)</span></>
@@ -419,7 +430,7 @@ export default function Deploy() {
                   }}
                 >
                   <option value="">Select strike…</option>
-                  {genStrikes(form.symbol, numEntry || 25000).map((s) => (
+                  {genStrikes(form.symbol, SYMBOL_DEFAULT_LEVEL[form.symbol] ?? 22000).map((s) => (
                     <option key={s} value={String(s)}>{s}</option>
                   ))}
                 </select>
