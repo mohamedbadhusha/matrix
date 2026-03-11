@@ -116,7 +116,7 @@ export default function Dashboard() {
 
       {/* Account mode filter is now global — in the TopBar */}
 
-      {/* Stats row */}}
+      {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Today P&L"
