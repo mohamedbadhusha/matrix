@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { useTrades } from '@/app/providers/TradeProvider';
 import { TradeCardCompact } from '@/components/TradeCard';
 import TradeCard from '@/components/TradeCard';
-import { cn, formatCurrency, getPnlClass, calcPnl } from '@/lib/utils';
-import type { Protocol, TradeStatus, TradeMode, TradeNode } from '@/types';
-import { X } from 'lucide-react';
+import { cn, formatCurrency, getPnlClass } from '@/lib/utils';
+import type { Protocol, TradeStatus, TradeMode } from '@/types';
+import { X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
 const ALL = '__ALL__';
 
@@ -12,131 +12,233 @@ const PROTOCOLS: (Protocol | typeof ALL)[] = [ALL, 'PROTECTOR', 'HALF_AND_HALF',
 const STATUSES: (TradeStatus | typeof ALL)[] = [ALL, 'ACTIVE', 'CLOSED', 'SL_HIT', 'KILLED'];
 const MODES: (TradeMode | typeof ALL)[] = [ALL, 'LIVE', 'PAPER'];
 
+const PROTOCOL_LABELS: Record<string, string> = {
+  PROTECTOR:      'Protector',
+  HALF_AND_HALF:  'Half & Half',
+  DOUBLE_SCALPER: 'Dbl Scalper',
+  SINGLE_SCALPER: 'Sgl Scalper',
+  TRAIL_RUNNER:   'Trail Run',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Active',
+  CLOSED: 'Closed',
+  SL_HIT: 'SL Hit',
+  KILLED: 'Killed',
+};
+
+const STATUS_ACTIVE_CLS: Record<string, string> = {
+  ACTIVE: 'text-profit border-profit/40 bg-profit/10',
+  CLOSED: 'text-muted border-muted/30 bg-muted/10',
+  SL_HIT: 'text-loss border-loss/40 bg-loss/10',
+  KILLED: 'text-loss border-loss/40 bg-loss/10',
+};
+
+const PROTOCOL_ACTIVE_CLS: Record<string, string> = {
+  PROTECTOR:      'text-accent-cyan border-accent-cyan/40 bg-accent-cyan/10',
+  HALF_AND_HALF:  'text-accent-purple border-accent-purple/40 bg-accent-purple/10',
+  DOUBLE_SCALPER: 'text-warning border-warning/40 bg-warning/10',
+  SINGLE_SCALPER: 'text-profit border-profit/40 bg-profit/10',
+  TRAIL_RUNNER:   'text-amber-400 border-amber-400/40 bg-amber-400/10',
+};
+
 export default function Trades() {
   const { allTrades, loadingTrades, deleteTrade, updateTrade } = useTrades();
 
   const [protocol, setProtocol] = useState<Protocol | typeof ALL>(ALL);
-  const [status, setStatus] = useState<TradeStatus | typeof ALL>(ALL);
-  const [mode, setMode] = useState<TradeMode | typeof ALL>(ALL);
+  const [status, setStatus]     = useState<TradeStatus | typeof ALL>(ALL);
+  const [mode, setMode]         = useState<TradeMode | typeof ALL>(ALL);
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateTo, setDateTo]     = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    return allTrades.filter((t) => {
-      if (protocol !== ALL && t.protocol !== protocol) return false;
-      if (status !== ALL && t.status !== status) return false;
-      if (mode !== ALL && t.mode !== mode) return false;
-      if (dateFrom && t.created_at < dateFrom) return false;
-      if (dateTo && t.created_at > dateTo + 'T23:59:59') return false;
-      return true;
-    });
+    return allTrades
+      .filter((t) => {
+        if (protocol !== ALL && t.protocol !== protocol) return false;
+        if (status  !== ALL && t.status   !== status)   return false;
+        if (mode    !== ALL && t.mode     !== mode)     return false;
+        if (dateFrom && t.created_at < dateFrom) return false;
+        if (dateTo   && t.created_at > dateTo + 'T23:59:59') return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [allTrades, protocol, status, mode, dateFrom, dateTo]);
 
+  // P&L: booked_pnl + unrealised for ACTIVE trades
   const totalPnl = filtered.reduce((sum, t) => {
-    if (t.exit_price && t.entry_price) {
-      return sum + calcPnl(t.entry_price, t.exit_price, t.lots * t.lot_size);
-    }
-    return sum;
+    const ltp = t.ltp ?? t.entry_price;
+    const open = t.status === 'ACTIVE' ? (ltp - t.entry_price) * t.remaining_quantity : 0;
+    return sum + t.booked_pnl + open;
   }, 0);
 
-  const wins = filtered.filter(
-    (t) => t.exit_price && t.entry_price && t.exit_price > t.entry_price,
-  ).length;
   const closedCount = filtered.filter((t) => t.status !== 'ACTIVE').length;
-  const winRate = closedCount > 0 ? ((wins / closedCount) * 100).toFixed(0) : '—';
+  const wins        = filtered.filter((t) => t.status !== 'ACTIVE' && t.booked_pnl > 0).length;
+  const winRate     = closedCount > 0 ? ((wins / closedCount) * 100).toFixed(0) : '—';
 
   const clearFilters = () => {
-    setProtocol(ALL);
-    setStatus(ALL);
-    setMode(ALL);
-    setDateFrom('');
-    setDateTo('');
+    setProtocol(ALL); setStatus(ALL); setMode(ALL);
+    setDateFrom('');  setDateTo('');
   };
 
-  const hasFilters =
-    protocol !== ALL || status !== ALL || mode !== ALL || dateFrom || dateTo;
+  const hasFilters = protocol !== ALL || status !== ALL || mode !== ALL || !!dateFrom || !!dateTo;
+  const filterCount = [protocol !== ALL, status !== ALL, mode !== ALL, !!dateFrom, !!dateTo].filter(Boolean).length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+    <div className="space-y-4 animate-fade-in">
+
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Trade History</h1>
-          <p className="text-sm text-muted mt-0.5">{filtered.length} trade{filtered.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="text-right">
-          <p className={cn('text-xl font-bold font-mono', getPnlClass(totalPnl))}>
-            {formatCurrency(totalPnl, true)}
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Trade History</h1>
+          <p className="text-sm text-muted mt-0.5">
+            {filtered.length} trade{filtered.length !== 1 ? 's' : ''}
+            {hasFilters && <span className="text-accent-cyan ml-1.5">filtered</span>}
           </p>
-          <p className="text-xs text-muted">Filtered P&L · Win {winRate}%</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className={cn('text-lg font-bold font-mono sm:text-xl', getPnlClass(totalPnl))}>
+            {totalPnl >= 0 ? '+' : ''}{formatCurrency(totalPnl)}
+          </p>
+          <p className="text-[11px] text-muted">P&amp;L · Win {winRate}%</p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="panel p-4 space-y-3">
-        <div className="flex flex-wrap gap-3">
-          {/* Protocol filter */}
-          <FilterGroup
-            label="Protocol"
-            options={PROTOCOLS}
-            value={protocol}
-            onChange={(v) => setProtocol(v as Protocol | typeof ALL)}
-            colorMap={{
-              PROTECTOR: 'text-accent-cyan border-accent-cyan/40 bg-accent-cyan/10',
-              HALF_AND_HALF: 'text-accent-purple border-accent-purple/40 bg-accent-purple/10',
-              DOUBLE_SCALPER: 'text-warning border-warning/40 bg-warning/10',
-              SINGLE_SCALPER: 'text-profit border-profit/40 bg-profit/10',
-              TRAIL_RUNNER:   'text-amber-400 border-amber-400/40 bg-amber-400/10',
-            }}
-          />
-          {/* Status filter */}
-          <FilterGroup
-            label="Status"
-            options={STATUSES}
-            value={status}
-            onChange={(v) => setStatus(v as TradeStatus | typeof ALL)}
-          />
-          {/* Mode filter */}
-          <FilterGroup
-            label="Mode"
-            options={MODES}
-            value={mode}
-            onChange={(v) => setMode(v as TradeMode | typeof ALL)}
-          />
-        </div>
-
-        {/* Date range */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            type="date"
-            className="input-base w-40 text-xs"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-          <span className="text-muted text-xs">to</span>
-          <input
-            type="date"
-            className="input-base w-40 text-xs"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-          {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors">
-              <X size={12} /> Clear
-            </button>
+      {/* ── Filter toggle bar ─────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setFiltersOpen((v) => !v)}
+          className={cn(
+            'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all',
+            filtersOpen || hasFilters
+              ? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
+              : 'bg-panel-mid text-muted border-border hover:text-foreground',
           )}
-        </div>
+        >
+          <SlidersHorizontal size={14} />
+          Filters
+          {filterCount > 0 && (
+            <span className="bg-accent-cyan text-panel-dark rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
+              {filterCount}
+            </span>
+          )}
+          {filtersOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <X size={12} /> Clear
+          </button>
+        )}
       </div>
 
-      {/* Trade list */}
+      {/* ── Filter panel ──────────────────────────────────── */}
+      {filtersOpen && (
+        <div className="panel p-4 space-y-4">
+
+          {/* Status */}
+          <div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">Status</p>
+            <div className="flex flex-wrap gap-1.5">
+              {STATUSES.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setStatus(opt as TradeStatus | typeof ALL)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs border transition-all',
+                    status === opt
+                      ? opt === ALL
+                        ? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
+                        : STATUS_ACTIVE_CLS[opt]
+                      : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                  )}
+                >
+                  {opt === ALL ? 'All' : STATUS_LABELS[opt] ?? opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mode */}
+          <div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">Mode</p>
+            <div className="flex flex-wrap gap-1.5">
+              {MODES.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setMode(opt as TradeMode | typeof ALL)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs border transition-all',
+                    mode === opt
+                      ? opt === 'LIVE'  ? 'bg-profit/10 text-profit border-profit/30'
+                      : opt === 'PAPER' ? 'bg-warning/10 text-warning border-warning/30'
+                      : 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
+                      : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                  )}
+                >
+                  {opt === ALL ? 'All' : opt === 'LIVE' ? 'Live' : 'Simulation'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Protocol */}
+          <div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">Protocol</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PROTOCOLS.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setProtocol(opt as Protocol | typeof ALL)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs border transition-all',
+                    protocol === opt
+                      ? opt === ALL
+                        ? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
+                        : PROTOCOL_ACTIVE_CLS[opt]
+                      : 'bg-panel-mid text-muted border-border hover:text-foreground',
+                  )}
+                >
+                  {opt === ALL ? 'All' : PROTOCOL_LABELS[opt] ?? opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div>
+            <p className="text-[10px] text-muted uppercase tracking-widest mb-2">Date Range</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="date"
+                className="input-base flex-1 min-w-[130px] text-xs"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <span className="text-muted text-xs">→</span>
+              <input
+                type="date"
+                className="input-base flex-1 min-w-[130px] text-xs"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── Trade list ────────────────────────────────────── */}
       {loadingTrades ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 rounded-full border-2 border-accent-cyan border-t-transparent animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="panel p-12 text-center space-y-2">
-          <p className="text-2xl">📭</p>
+          <p className="text-3xl">📭</p>
           <p className="text-sm text-muted">No trades match your filters</p>
           {hasFilters && (
             <button onClick={clearFilters} className="text-xs text-accent-cyan underline">
@@ -145,85 +247,64 @@ export default function Trades() {
           )}
         </div>
       ) : (
-        <div className="panel overflow-hidden">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Symbol</th>
-                <th>Protocol</th>
-                <th>Mode</th>
-                <th>Entry</th>
-                <th>Exit / LTP</th>
-                <th>P&L</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((trade) => (
-                <>
-                  <TradeCardCompact
-                    key={trade.id}
-                    trade={trade}
-                    onExpand={(id) => setExpandedId((prev) => (prev === id ? null : id))}
-                    expanded={expandedId === trade.id}
-                    onDelete={deleteTrade}
-                    onEdit={(id, u) => updateTrade(id, u)}
-                  />
-                  {expandedId === trade.id && (
-                    <tr key={`${trade.id}-expand`}>
-                      <td colSpan={9} className="p-4 bg-panel-mid/60">
-                        <TradeCard
-                          trade={trade}
-                          onDelete={deleteTrade}
-                          onEdit={(id, u) => updateTrade(id, u)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
+        <>
+          {/* Mobile — full cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.map((trade) => (
+              <TradeCard
+                key={trade.id}
+                trade={trade}
+                onDelete={deleteTrade}
+                onEdit={(id, u) => updateTrade(id, u)}
+              />
+            ))}
+          </div>
 
-function FilterGroup({
-  label,
-  options,
-  value,
-  onChange,
-  colorMap,
-}: {
-  label: string;
-  options: (string)[];
-  value: string;
-  onChange: (v: string) => void;
-  colorMap?: Record<string, string>;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted w-14 flex-shrink-0">{label}</span>
-      <div className="flex gap-1">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={cn(
-              'px-2.5 py-1 rounded-lg text-xs border transition-all',
-              value === opt
-                ? colorMap?.[opt] ?? 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30'
-                : 'bg-panel-mid text-muted border-border hover:text-foreground',
-            )}
-          >
-            {opt === '__ALL__' ? 'All' : opt}
-          </button>
-        ))}
-      </div>
+          {/* Desktop — compact table */}
+          <div className="hidden md:block panel overflow-x-auto">
+            <table className="table-base">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Protocol</th>
+                  <th>Mode</th>
+                  <th>Entry</th>
+                  <th>Exit / LTP</th>
+                  <th>P&amp;L</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((trade) => (
+                  <>
+                    <TradeCardCompact
+                      key={trade.id}
+                      trade={trade}
+                      onExpand={(id) => setExpandedId((prev) => (prev === id ? null : id))}
+                      expanded={expandedId === trade.id}
+                      onDelete={deleteTrade}
+                      onEdit={(id, u) => updateTrade(id, u)}
+                    />
+                    {expandedId === trade.id && (
+                      <tr key={`${trade.id}-expand`}>
+                        <td colSpan={9} className="p-4 bg-panel-mid/60">
+                          <TradeCard
+                            trade={trade}
+                            onDelete={deleteTrade}
+                            onEdit={(id, u) => updateTrade(id, u)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
