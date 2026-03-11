@@ -49,8 +49,8 @@ const EXCHANGE_SEGMENTS = [
   'NSE_CURRENCY', 'BSE_CURRENCY', 'MCX_COMM',
 ];
 
-const MODIFIABLE_STATUSES: DhanOrder['orderStatus'][] = ['TRANSIT', 'PENDING'];
-const CANCELLABLE_STATUSES: DhanOrder['orderStatus'][] = ['TRANSIT', 'PENDING', 'PART_TRADED'];
+const MODIFIABLE_STATUSES: DhanOrder['orderStatus'][] = ['TRANSIT', 'PENDING', 'TRIGGERED'];
+const CANCELLABLE_STATUSES: DhanOrder['orderStatus'][] = ['TRANSIT', 'PENDING', 'PART_TRADED', 'TRIGGERED'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Order status badge
@@ -67,6 +67,8 @@ function StatusBadge({ status }: { status: DhanOrder['orderStatus'] | undefined 
     REJECTED:    { cls: 'bg-loss/10 text-loss border-loss/30',             icon: <AlertTriangle size={10} /> },
     CANCELLED:   { cls: 'bg-muted/10 text-muted border-muted/30',          icon: <Ban size={10} /> },
     EXPIRED:     { cls: 'bg-muted/10 text-muted border-muted/30',          icon: <Ban size={10} /> },
+    MODIFIED:    { cls: 'bg-accent-cyan/10 text-accent-cyan border-accent-cyan/30', icon: <Clock size={10} /> },
+    TRIGGERED:   { cls: 'bg-warning/10 text-warning border-warning/30',    icon: <Clock size={10} /> },
   };
   const { cls, icon } = cfg[status] ?? { cls: 'bg-muted/10 text-muted', icon: null };
 

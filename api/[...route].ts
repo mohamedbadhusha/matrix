@@ -25,6 +25,7 @@ import dhanForeverOrder         from './_handlers/dhan-forever-order.js';
 import dhanForeverOrderbook     from './_handlers/dhan-forever-orderbook.js';
 import dhanFundLimit            from './_handlers/dhan-fund-limit.js';
 import dhanGenerateConsent      from './_handlers/dhan-generate-consent.js';
+import dhanGetOrder             from './_handlers/dhan-get-order.js';
 import dhanHoldings             from './_handlers/dhan-holdings.js';
 import dhanKillswitch           from './_handlers/dhan-killswitch.js';
 import dhanLedger               from './_handlers/dhan-ledger.js';
@@ -67,8 +68,7 @@ const routes: Record<string, Handler> = {
   'dhan-forever-order':             dhanForeverOrder,
   'dhan-forever-orderbook':         dhanForeverOrderbook,
   'dhan-fund-limit':                dhanFundLimit,
-  'dhan-generate-consent':          dhanGenerateConsent,
-  'dhan-holdings':                  dhanHoldings,
+  'dhan-generate-consent':          dhanGenerateConsent,  'dhan-get-order':                  dhanGetOrder,  'dhan-holdings':                  dhanHoldings,
   'dhan-killswitch':                dhanKillswitch,
   'dhan-ledger':                    dhanLedger,
   'dhan-ltp':                       dhanLtp,

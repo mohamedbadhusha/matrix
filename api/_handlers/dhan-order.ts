@@ -80,14 +80,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       validity:          body.validity ?? 'DAY',
       tradingSymbol:     trade.trading_symbol,
       securityId:        trade.security_id ?? '',
-      quantity:          String(trade.qty_per_bucket),
-      price:             body.price != null ? String(body.price) : '',
-      triggerPrice:      body.triggerPrice != null ? String(body.triggerPrice) : '',
-      disclosedQuantity: '',
+      quantity:          Number(trade.qty_per_bucket),
+      price:             body.price != null ? Number(body.price) : 0,
+      triggerPrice:      body.triggerPrice != null ? Number(body.triggerPrice) : 0,
+      disclosedQuantity: 0,
       afterMarketOrder:  false,
-      amoTime:           '',
-      boProfitValue:     '',
-      boStopLossValue:   '',
     };
   } else {
     // Manual mode — validate required fields
@@ -107,14 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       validity:          body.validity ?? 'DAY',
       tradingSymbol:     body.tradingSymbol ?? '',
       securityId:        body.securityId,
-      quantity:          String(body.quantity),
-      price:             body.price != null ? String(body.price) : '',
-      triggerPrice:      body.triggerPrice != null ? String(body.triggerPrice) : '',
-      disclosedQuantity: body.disclosedQuantity != null ? String(body.disclosedQuantity) : '',
+      quantity:          Number(body.quantity),
+      price:             body.price != null ? Number(body.price) : 0,
+      triggerPrice:      body.triggerPrice != null ? Number(body.triggerPrice) : 0,
+      disclosedQuantity: body.disclosedQuantity != null ? Number(body.disclosedQuantity) : 0,
       afterMarketOrder:  body.afterMarketOrder ?? false,
-      amoTime:           body.amoTime ?? '',
-      boProfitValue:     body.boProfitValue != null ? String(body.boProfitValue) : '',
-      boStopLossValue:   body.boStopLossValue != null ? String(body.boStopLossValue) : '',
+      ...(body.amoTime ? { amoTime: body.amoTime } : {}),
+      ...(body.boProfitValue != null ? { boProfitValue: Number(body.boProfitValue) } : {}),
+      ...(body.boStopLossValue != null ? { boStopLossValue: Number(body.boStopLossValue) } : {}),
     };
   }
 

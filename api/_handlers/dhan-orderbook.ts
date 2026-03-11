@@ -43,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           broker_account_id:    broker.id as string,
           dhan_client_id:       String(o.dhanClientId ?? broker.client_id),
           order_id:             String(o.orderId),
+          exchange_order_id:    o.exchangeOrderId ? String(o.exchangeOrderId) : null,
           correlation_id:       o.correlationId ? String(o.correlationId) : null,
           transaction_type:     String(o.transactionType),
           exchange_segment:     String(o.exchangeSegment),

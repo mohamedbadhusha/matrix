@@ -243,7 +243,9 @@ export type DhanOrderStatus =
   | 'CANCELLED'
   | 'PART_TRADED'
   | 'TRADED'
-  | 'EXPIRED';
+  | 'EXPIRED'
+  | 'MODIFIED'
+  | 'TRIGGERED';
 export type DhanLegName = 'ENTRY_LEG' | 'TARGET_LEG' | 'STOP_LOSS_LEG';
 export type DhanAmoTime = 'PRE_OPEN' | 'OPEN' | 'OPEN_30' | 'OPEN_60';
 export type DhanOptionType = 'CALL' | 'PUT';
@@ -253,6 +255,7 @@ export interface DhanOrder {
   id?: string;                              // local UUID (from dhan_orders)
   dhanClientId: string;
   orderId: string;
+  exchangeOrderId: string | null;
   correlationId: string;
   orderStatus: DhanOrderStatus;
   transactionType: DhanTransactionType;
