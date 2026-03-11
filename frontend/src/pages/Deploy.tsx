@@ -125,6 +125,9 @@ export default function Deploy() {
         entryPrice: state.entryPrice ? String(state.entryPrice) : '',
         targetMode: 'MOMENTUM',
       }));
+      // Centre strike dropdown on the option chain strike
+      const strikeNum = parseInt(state.strike);
+      if (!isNaN(strikeNum) && strikeNum > 100) setStrikeCenter(strikeNum);
       // Clear state so a back-navigation doesn't re-trigger
       window.history.replaceState({}, '');
     }
@@ -147,6 +150,9 @@ export default function Deploy() {
         t3: String(signal.t3),
         targetMode: 'MANUAL',
       }));
+      // Centre the strike dropdown on the parsed strike number
+      const strikeNum = parseInt(signal.strike);
+      if (!isNaN(strikeNum) && strikeNum > 100) setStrikeCenter(strikeNum);
     }
   }, []);
 
