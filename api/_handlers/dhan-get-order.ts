@@ -87,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           drv_strike_price:     data.drvStrikePrice ? Number(data.drvStrikePrice) : null,
           raw_response:         data,
         },
-        { onConflict: 'order_id', ignoreDuplicates: false },
+        { onConflict: 'user_id,order_id', ignoreDuplicates: false },
       );
     }
 

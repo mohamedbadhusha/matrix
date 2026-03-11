@@ -278,6 +278,7 @@ CREATE TRIGGER dhan_orders_touch
   BEFORE UPDATE ON public.dhan_orders
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
+CREATE UNIQUE INDEX IF NOT EXISTS dhan_orders_user_order_uidx ON public.dhan_orders(user_id, order_id) WHERE order_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS dhan_orders_user_idx        ON public.dhan_orders(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS dhan_orders_order_id_idx    ON public.dhan_orders(order_id) WHERE order_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS dhan_orders_status_idx      ON public.dhan_orders(order_status);
@@ -1286,5 +1287,12 @@ DROP POLICY IF EXISTS "Users can delete own trades" ON public.trade_nodes;
 CREATE POLICY "Users can delete own trades"
   ON public.trade_nodes FOR DELETE
   USING (auth.uid() = user_id);
+
+-- 2026-03-11 | Add UNIQUE constraint on dhan_orders(user_id, order_id)
+--   Required for upsert onConflict: 'user_id,order_id' used by dhan-orderbook
+--   and dhan-get-order handlers. Without this, all order upserts silently fail.
+CREATE UNIQUE INDEX IF NOT EXISTS dhan_orders_user_order_uidx
+  ON public.dhan_orders(user_id, order_id)
+  WHERE order_id IS NOT NULL;
 
 -- ============================================================
